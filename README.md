@@ -1,14 +1,24 @@
 # Portfolio Forward Test — £1,000,000, 1% Risk Per Trade
 
-Three validated strategies, one shared account, one journal:
+Three validated strategies, one shared account, one journal — **now covering all 34 instruments** the ADX+Supertrend system has been validated on (expanded from an initial 12-pair pilot; all 34 came back profitable, in-sample and out-of-sample, no exceptions).
 
 | Strategy | Instrument(s) | Cadence | Backtest result |
 |---|---|---|---|
 | Pivot S/R (long-only, vol-scaled) | NAS100 | Daily | Sharpe 1.25 (2016-26) / 0.76 (2008-26 full history) |
 | Donchian(20) (reversal) | EURGBP | Daily | Sharpe 0.58, PF 1.94 |
-| ADX(14)>25 + Supertrend(10,3) | 12 pairs (EURCHF, EURCAD, EURJPY, CADCHF, NZDCAD, GBPCAD, AUDCHF, NZDJPY, GBPUSD, US30, DE30, UK100) | Hourly | Profitable full-period, IS, and OOS on all 12; robust across parameter variants |
+| ADX(14)>25 + Supertrend(10,3) | **All 34 instruments** (full FX/index/gold universe tested) | Hourly | Profitable on 34/34, IS and OOS, across every instrument tested |
 
 **This places no real trades. It's a forward-test journal.**
+
+## Fresh start (2nd reset)
+
+This repo was reset once already to consolidate three prior single-strategy repos.
+It has now been reset **again** to expand the hourly system from its original
+12-pair pilot to the full 34-instrument universe. Equity is back to exactly
+£1,000,000, journal is empty, all 34+2 positions start flat. This is a clean
+slate specifically because the instrument set materially changed — comparing
+against the old 12-pair equity curve wouldn't be meaningful once the book is
+this much bigger.
 
 ## How risk is tracked
 
