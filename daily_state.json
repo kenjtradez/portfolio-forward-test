@@ -6,8 +6,8 @@
     "vol_scale": 1.0
   },
   "eurgbp": {
-    "state": 0,
-    "entry_price": null,
-    "risk_ref": null
+    "state": -1,
+    "entry_price": 0.8586000204086304,
+    "risk_ref": 0.8603814471476419
   }
 }
