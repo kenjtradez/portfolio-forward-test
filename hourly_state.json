@@ -1,0 +1,86 @@
+{
+  "EURCHF": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "EURCAD": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "EURJPY": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "CADCHF": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "NZDCAD": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "GBPCAD": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "AUDCHF": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "NZDJPY": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "GBPUSD": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "US30": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "DE30": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  },
+  "UK100": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false
+  }
+}
