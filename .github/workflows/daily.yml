@@ -1,0 +1,29 @@
+name: Daily Signals (NAS100 + EURGBP)
+
+on:
+  schedule:
+    - cron: '15 22 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install pandas requests numpy
+      - name: Run daily signals
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python daily_signals.py
+      - name: Commit updated logs
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add nas100_log.csv eurgbp_log.csv daily_state.json equity.json journal.csv
+          git diff --staged --quiet || git commit -m "Daily signal update $(date -u +%Y-%m-%d)"
+          git push
