@@ -16,12 +16,28 @@ the opposite hypothesis: continuation through them.
 
 Entry trigger (this script's own design choice, not in the indicator):
   - today's close breaks beyond the MEDIAN level -> enter in that direction
-  - target = the 75th-percentile level (the indicator's own "Long/Short ->
-    Proj H/L 75p" trade idea row)
-  - stop = 1.5x ATR(14) from the entry close (the indicator's own SL rule)
-Only one target is used (not a two-stage median->p75->p90 scale-out) to
-keep this compatible with journal.py's single-fill trade model, same as
-every other strategy in this repo.
+
+REVISED exit rule (v2 — see git history for the original percentile-target
+version): the first version targeted the 75th/90th-percentile level (the
+indicator's own "Trade Idea" row) with a 1.5x ATR(14) stop. On Gold that
+routinely produced a target only a few dollars away sitting next to a
+stop worth 100+ dollars (RR ~0.04:1) — the percentile gap between median
+and p75, as a fraction of price, has nothing to do with the instrument's
+actual dollar volatility, so the two legs weren't comparable. Real example
+that exposed it: entry 4,520.90, target 4,526.26, stop 4,389.02.
+
+Fixed by decoupling the exit from the percentile levels entirely and
+sizing both legs off the same ATR, guaranteeing every trade the same
+built-in reward:risk:
+  - stop   = entry -/+ 1x ATR(14)
+  - target = entry +/- 2x ATR(14)
+  -> fixed 2:1 RR by construction, every trade, both instruments.
+The forecast levels are now used ONLY for the entry trigger (did price
+break the median), not for sizing the trade. This makes it a volatility
+breakout with a forecast-level entry filter, not a "trade toward the
+next forecast level" strategy — a real change in what's being tested,
+not just a bugfix. Single target (no scale-out), same as every other
+strategy in this repo's journal.py model.
 
 KNOWN LIMITATION: daily OHLC bars can't tell us which of target/stop was
 hit first if both fall within the same day's high-low range. This script
@@ -48,7 +64,8 @@ STATE_PATH = BASE / "gold_nas_target_state.json"
 
 LOOKBACK = 75          # trading days — matches the indicator's default lookback input
 MIN_HISTORY_DAYS = 20  # don't trade until at least this many history days are available
-ATR_STOP_MULT = 1.5    # matches the indicator's own "Trade Idea" SL sizing
+ATR_STOP_MULT = 1.0    # stop = entry -/+ 1x ATR(14)
+ATR_TARGET_MULT = 2.0  # target = entry +/- 2x ATR(14) -> fixed 2:1 RR (see module docstring)
 
 # Each instrument maps to a list of candidate Yahoo tickers, tried in order.
 # XAUUSD=X (the ticker hourly_signals.py also uses) 404s as of this writing —
@@ -196,40 +213,33 @@ def process_instrument(key, df, state, msgs):
     if s["state"] == 0:
         levels = compute_levels(history)
         up_median_px = today_open * (1 + levels["up_median"])
-        up_p75_px = today_open * (1 + levels["up_p75"])
-        up_p90_px = today_open * (1 + levels["up_p90"])
         down_median_px = today_open * (1 - levels["down_median"])
-        down_p75_px = today_open * (1 - levels["down_p75"])
-        down_p90_px = today_open * (1 - levels["down_p90"])
+        have_atr = not np.isnan(atr) and atr > 0
 
-        # Pick the next level still AHEAD of today's close as the target —
-        # a close that already gapped past p75 targets p90 instead of a
-        # target that sits behind the entry. A close already past p90 has
-        # no further defined level, so it's skipped rather than faked.
-        if today_close >= up_median_px:
-            target = up_p75_px if today_close < up_p75_px else (up_p90_px if today_close < up_p90_px else None)
-            if target is not None:
-                entry = today_close
-                stop = entry - ATR_STOP_MULT * atr if not np.isnan(atr) else entry * 0.99
-                s.update({"state": 1, "direction": "long", "entry_price": entry,
-                          "target_price": target, "stop_price": stop, "entry_date": today_date})
-                risk_gbp = current_risk_gbp()
-                msgs.append(f"*{key}* — ENTER LONG @ {entry:,.2f} (target {target:,.2f}, stop {stop:,.2f}, "
-                            f"~£{risk_gbp:,.0f} at risk, {levels['n']}d sample)")
-            else:
-                msgs.append(f"{key}: close {today_close:,.2f} already past the 90th-pct level ({up_p90_px:,.2f}) — no defined target, skipping entry")
-        elif today_close <= down_median_px:
-            target = down_p75_px if today_close > down_p75_px else (down_p90_px if today_close > down_p90_px else None)
-            if target is not None:
-                entry = today_close
-                stop = entry + ATR_STOP_MULT * atr if not np.isnan(atr) else entry * 1.01
-                s.update({"state": -1, "direction": "short", "entry_price": entry,
-                          "target_price": target, "stop_price": stop, "entry_date": today_date})
-                risk_gbp = current_risk_gbp()
-                msgs.append(f"*{key}* — ENTER SHORT @ {entry:,.2f} (target {target:,.2f}, stop {stop:,.2f}, "
-                            f"~£{risk_gbp:,.0f} at risk, {levels['n']}d sample)")
-            else:
-                msgs.append(f"{key}: close {today_close:,.2f} already past the 90th-pct level ({down_p90_px:,.2f}) — no defined target, skipping entry")
+        # Forecast levels decide WHETHER to enter (did price break the
+        # median); ATR decides the trade's actual size, so target and stop
+        # are always on the same scale — fixed 2:1 RR every time. See the
+        # module docstring for why this replaced the old percentile target.
+        if today_close >= up_median_px and have_atr:
+            entry = today_close
+            stop = entry - ATR_STOP_MULT * atr
+            target = entry + ATR_TARGET_MULT * atr
+            s.update({"state": 1, "direction": "long", "entry_price": entry,
+                      "target_price": target, "stop_price": stop, "entry_date": today_date})
+            risk_gbp = current_risk_gbp()
+            msgs.append(f"*{key}* — ENTER LONG @ {entry:,.2f} (target {target:,.2f}, stop {stop:,.2f}, "
+                        f"RR 2:1, ~£{risk_gbp:,.0f} at risk, {levels['n']}d sample)")
+        elif today_close <= down_median_px and have_atr:
+            entry = today_close
+            stop = entry + ATR_STOP_MULT * atr
+            target = entry - ATR_TARGET_MULT * atr
+            s.update({"state": -1, "direction": "short", "entry_price": entry,
+                      "target_price": target, "stop_price": stop, "entry_date": today_date})
+            risk_gbp = current_risk_gbp()
+            msgs.append(f"*{key}* — ENTER SHORT @ {entry:,.2f} (target {target:,.2f}, stop {stop:,.2f}, "
+                        f"RR 2:1, ~£{risk_gbp:,.0f} at risk, {levels['n']}d sample)")
+        elif not have_atr and (today_close >= up_median_px or today_close <= down_median_px):
+            msgs.append(f"{key}: median level broken @ {today_close:,.2f} but ATR(14) unavailable yet — skipping entry")
         else:
             msgs.append(f"{key}: FLAT @ {today_close:,.2f} (median levels {down_median_px:,.2f} / {up_median_px:,.2f})")
 
