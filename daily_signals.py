@@ -100,7 +100,7 @@ def process_nas100(state, msgs):
     resistance = 2 * pivot - bar["prior_low"]
     close = bar["close"]
 
-    row = {"date": bar["date"], "close": close, "high": bar["high"], "low": bar["low"],
+    row = {"date": pd.to_datetime(bar["date"]), "close": close, "high": bar["high"], "low": bar["low"],
            "pivot": pivot, "resistance": resistance}
     log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
 
@@ -155,7 +155,7 @@ def process_donchian_all(state, msgs):
             continue
 
         close = bar["close"]
-        row = {"instrument": inst, "date": bar["date"], "close": close, "high": bar["high"], "low": bar["low"]}
+        row = {"instrument": inst, "date": pd.to_datetime(bar["date"]), "close": close, "high": bar["high"], "low": bar["low"]}
         log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
         inst_log = log[log["instrument"] == inst]  # refresh after append
 
