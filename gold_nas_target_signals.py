@@ -50,9 +50,15 @@ LOOKBACK = 75          # trading days — matches the indicator's default lookba
 MIN_HISTORY_DAYS = 20  # don't trade until at least this many history days are available
 ATR_STOP_MULT = 1.5    # matches the indicator's own "Trade Idea" SL sizing
 
+# Each instrument maps to a list of candidate Yahoo tickers, tried in order.
+# XAUUSD=X (the ticker hourly_signals.py also uses) 404s as of this writing —
+# that code path has never actually run live since there's no hourly.yml, so
+# it was never caught. GC=F (COMEX gold futures) and XAU=X are the common
+# working fallbacks; once one succeeds it's cached in state so we don't
+# re-probe dead tickers every run.
 INSTRUMENTS = {
-    "NAS100": "^NDX",
-    "XAUUSD": "XAUUSD=X",
+    "NAS100": ["^NDX"],
+    "XAUUSD": ["XAUUSD=X", "GC=F", "XAU=X"],
 }
 
 DEFAULT_POSITION = {
@@ -85,19 +91,38 @@ def fetch_daily_bars(symbol, range_):
     return rows
 
 
-def load_or_seed_log():
+def fetch_daily_bars_any(candidates, range_, preferred=None):
+    """Try candidates in order (preferred symbol first, if given and still
+    in the list). Returns (rows, symbol_that_worked). Raises with every
+    candidate's error if all fail, so a real outage is still loud."""
+    ordered = candidates
+    if preferred and preferred in candidates:
+        ordered = [preferred] + [c for c in candidates if c != preferred]
+    errors = []
+    for symbol in ordered:
+        try:
+            return fetch_daily_bars(symbol, range_), symbol
+        except Exception as e:
+            errors.append(f"{symbol}: {e}")
+    raise RuntimeError("All candidate tickers failed — " + " | ".join(errors))
+
+
+def load_or_seed_log(state):
     if LOG_PATH.exists():
         df = pd.read_csv(LOG_PATH, parse_dates=["date"])
     else:
         df = pd.DataFrame(columns=["date", "instrument", "open", "high", "low", "close"])
 
+    resolved = state.setdefault("_resolved_symbols", {})
     frames = [df]
-    for key, symbol in INSTRUMENTS.items():
+    for key, candidates in INSTRUMENTS.items():
         existing = df[df["instrument"] == key] if not df.empty else df
         # Seed with 2y of history on first run so the 75-day lookback is
         # immediately usable; otherwise just top up the last month.
         range_ = "2y" if existing.empty else "1mo"
-        rows = fetch_daily_bars(symbol, range_)
+        rows, symbol_used = fetch_daily_bars_any(candidates, range_, preferred=resolved.get(key))
+        if resolved.get(key) != symbol_used:
+            resolved[key] = symbol_used
         existing_dates = set(existing["date"].dt.strftime("%Y-%m-%d")) if not existing.empty else set()
         new_rows = [{**r, "instrument": key} for r in rows if r["date"] not in existing_dates]
         if new_rows:
@@ -246,8 +271,8 @@ def send_telegram(msg):
 
 
 def main():
-    df = load_or_seed_log()
     state = load_state()
+    df = load_or_seed_log(state)
     msgs = []
 
     for key in INSTRUMENTS:
