@@ -1,0 +1,32 @@
+name: Gold+NAS100 Level Continuation
+
+on:
+  schedule:
+    # 22:30 UTC, after the daily close and after daily.yml (22:15), so it
+    # doesn't race the shared journal/equity files, and before the 23:00
+    # P&L summary so today's trades are included in it.
+    - cron: '30 22 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install pandas requests numpy
+      - name: Run Gold+NAS100 Level Continuation signals
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python gold_nas_target_signals.py
+      - name: Commit updated logs
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add gold_nas_target_log.csv gold_nas_target_state.json equity.json journal.csv
+          git diff --staged --quiet || git commit -m "Level Continuation signal update $(date -u +%Y-%m-%d)"
+          git push
