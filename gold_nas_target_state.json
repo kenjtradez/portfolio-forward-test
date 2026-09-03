@@ -1,0 +1,24 @@
+{
+  "NAS100": {
+    "state": 0,
+    "direction": null,
+    "entry_price": null,
+    "target_price": null,
+    "stop_price": null,
+    "entry_date": null,
+    "last_processed_date": "2026-09-03"
+  },
+  "XAUUSD": {
+    "state": 1,
+    "direction": "long",
+    "entry_price": 4520.89990234375,
+    "target_price": 4526.258906238542,
+    "stop_price": 4389.017717633928,
+    "entry_date": "2026-09-03",
+    "last_processed_date": "2026-09-03"
+  },
+  "_resolved_symbols": {
+    "NAS100": "^NDX",
+    "XAUUSD": "GC=F"
+  }
+}
