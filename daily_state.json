@@ -10,8 +10,8 @@
   "donchian": {
     "EURGBP": {
       "state": -1,
-      "entry_price": 0.8591600060462952,
-      "risk_ref": 0.8609700046975272,
+      "entry_price": 0.8591200113296509,
+      "risk_ref": 0.8609300099808829,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -52,8 +52,8 @@
     },
     "GBPCAD": {
       "state": 1,
-      "entry_price": 1.869789958000183,
-      "risk_ref": 1.8637256708254133,
+      "entry_price": 1.8700400590896606,
+      "risk_ref": 1.8639757719148908,
       "trade_id": null,
       "risk_fraction": 1.0
     },
