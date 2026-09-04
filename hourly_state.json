@@ -4,237 +4,305 @@
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "AUDCHF": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "AUDJPY": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "AUDNZD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "AUDUSD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "CADCHF": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "CADJPY": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "CHFJPY": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
-  },
-  "DE30": {
-    "state": 0,
-    "entry_price": null,
-    "initial_risk_ref": null,
-    "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "EURAUD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "EURCAD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "EURCHF": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "EURGBP": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "EURJPY": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "EURNZD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "EURUSD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "GBPAUD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "GBPCAD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "GBPCHF": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "GBPJPY": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "GBPNZD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "GBPUSD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
-  },
-  "NAS100_USD": {
-    "state": 0,
-    "entry_price": null,
-    "initial_risk_ref": null,
-    "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "NZDCAD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "NZDJPY": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "NZDUSD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
-  },
-  "SPX500": {
-    "state": 0,
-    "entry_price": null,
-    "initial_risk_ref": null,
-    "stop_price": null,
-    "moved_to_be": false
-  },
-  "UK100": {
-    "state": 0,
-    "entry_price": null,
-    "initial_risk_ref": null,
-    "stop_price": null,
-    "moved_to_be": false
-  },
-  "US2000": {
-    "state": 0,
-    "entry_price": null,
-    "initial_risk_ref": null,
-    "stop_price": null,
-    "moved_to_be": false
-  },
-  "US30": {
-    "state": 0,
-    "entry_price": null,
-    "initial_risk_ref": null,
-    "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "USDCAD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "USDCHF": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "USDJPY": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
+  },
+  "NAS100_USD": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
+  },
+  "SPX500": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
+  },
+  "US30": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
+  },
+  "US2000": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
+  },
+  "DE30": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
+  },
+  "UK100": {
+    "state": 0,
+    "entry_price": null,
+    "initial_risk_ref": null,
+    "stop_price": null,
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "XAUUSD": {
     "state": 0,
     "entry_price": null,
     "initial_risk_ref": null,
     "stop_price": null,
-    "moved_to_be": false
+    "moved_to_be": false,
+    "trade_id": null,
+    "risk_fraction": 1.0
   }
 }

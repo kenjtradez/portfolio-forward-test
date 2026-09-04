@@ -4,50 +4,58 @@
     "entry_price": null,
     "risk_ref": null,
     "vol_scale": 1.0,
-    "trade_id": null
+    "trade_id": null,
+    "risk_fraction": 1.0
   },
   "donchian": {
     "EURGBP": {
-      "state": -1,
-      "entry_price": 0.859499990940094,
-      "risk_ref": 0.8613028498063768,
-      "trade_id": null
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
     },
     "EURCAD": {
-      "state": 1,
-      "entry_price": 1.6035699844360352,
-      "risk_ref": 1.598978556049892,
-      "trade_id": null
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
     },
     "GBPUSD": {
       "state": 0,
       "entry_price": null,
       "risk_ref": null,
-      "trade_id": null
+      "trade_id": null,
+      "risk_fraction": 1.0
     },
     "US30": {
       "state": 0,
       "entry_price": null,
       "risk_ref": null,
-      "trade_id": null
+      "trade_id": null,
+      "risk_fraction": 1.0
     },
     "EURJPY": {
-      "state": 1,
-      "entry_price": 180.85699462890625,
-      "risk_ref": 179.8296375732422,
-      "trade_id": null
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
     },
     "DE30": {
       "state": 0,
       "entry_price": null,
       "risk_ref": null,
-      "trade_id": null
+      "trade_id": null,
+      "risk_fraction": 1.0
     },
     "GBPCAD": {
-      "state": 1,
-      "entry_price": 1.8655799627304077,
-      "risk_ref": 1.8597656744657245,
-      "trade_id": null
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
     }
   }
 }

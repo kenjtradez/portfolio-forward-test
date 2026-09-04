@@ -15,7 +15,8 @@ import requests
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from journal import record_trade_close, current_risk_gbp, load_equity
+from journal import record_trade_close, current_risk_gbp, load_equity, available_risk_fraction
+from execution import execute_entry, execute_exit, update_trailing_stop, EXECUTION_ENABLED
 
 BASE = Path(__file__).parent
 PRICE_LOG_PATH = BASE / "hourly_price_log.csv"
@@ -131,10 +132,10 @@ def load_state():
     if HOURLY_STATE_PATH.exists():
         return json.loads(HOURLY_STATE_PATH.read_text())
     return {p: {"state": 0, "entry_price": None, "initial_risk_ref": None,
-                "stop_price": None, "moved_to_be": False} for p in PAIRS}
+                "stop_price": None, "moved_to_be": False, "trade_id": None} for p in PAIRS}
 
 
-def process_pair(pair, price_log, state):
+def process_pair(pair, price_log, state, open_counter):
     symbol = YAHOO_SYMBOLS[pair]
     bars = fetch_latest_h1_bars(symbol, n=5)
     if not bars:
@@ -159,12 +160,14 @@ def process_pair(pair, price_log, state):
     st_vals, dir_vals, adx_vals = st.values, st_dir.values, adx.values
 
     p_state = state.get(pair, {"state": 0, "entry_price": None, "initial_risk_ref": None,
-                                "stop_price": None, "moved_to_be": False})
+                                "stop_price": None, "moved_to_be": False, "trade_id": None, "risk_fraction": 1.0})
     cur_pos = p_state["state"]
     entry_price = p_state["entry_price"]
     initial_risk_ref = p_state["initial_risk_ref"]
     stop_price = p_state["stop_price"]
     moved_to_be = p_state["moved_to_be"]
+    trade_id = p_state.get("trade_id")
+    risk_fraction = p_state.get("risk_fraction", 1.0)
 
     i = len(pair_df) - 1
     c, h, l = closes[i], highs[i], lows[i]
@@ -173,56 +176,101 @@ def process_pair(pair, price_log, state):
 
     action = "HOLD" if cur_pos != 0 else "FLAT"
     pnl_note = None
+    stop_updated = False
 
     if cur_pos == 0:
         if not np.isnan(cur_adx) and cur_adx > ADX_THRESH and not np.isnan(cur_st):
             if prev_dir == -1 and cur_dir == 1:
-                cur_pos = 1
-                entry_price = c
-                stop_price = st_vals[i - 1]
-                initial_risk_ref = stop_price
-                moved_to_be = False
-                action = "ENTER LONG"
+                risk_frac = available_risk_fraction(open_counter[0])
+                if risk_frac <= 0:
+                    action = "SIGNAL SKIPPED (risk budget full)"
+                else:
+                    cur_pos = 1
+                    entry_price = c
+                    stop_price = st_vals[i - 1]
+                    initial_risk_ref = stop_price
+                    moved_to_be = False
+                    risk_fraction = risk_frac
+                    action = "ENTER LONG" if risk_frac >= 1.0 else f"ENTER LONG ({risk_frac:.0%} slice)"
+                    fill = execute_entry(pair, "long", current_risk_gbp(risk_frac), stop_price)
+                    trade_id = fill["trade_id"] if fill else None
+                    open_counter[0] += 1
             elif prev_dir == 1 and cur_dir == -1:
-                cur_pos = -1
-                entry_price = c
-                stop_price = st_vals[i - 1]
-                initial_risk_ref = stop_price
-                moved_to_be = False
-                action = "ENTER SHORT"
+                risk_frac = available_risk_fraction(open_counter[0])
+                if risk_frac <= 0:
+                    action = "SIGNAL SKIPPED (risk budget full)"
+                else:
+                    cur_pos = -1
+                    entry_price = c
+                    stop_price = st_vals[i - 1]
+                    initial_risk_ref = stop_price
+                    moved_to_be = False
+                    risk_fraction = risk_frac
+                    action = "ENTER SHORT" if risk_frac >= 1.0 else f"ENTER SHORT ({risk_frac:.0%} slice)"
+                    fill = execute_entry(pair, "short", current_risk_gbp(risk_frac), stop_price)
+                    trade_id = fill["trade_id"] if fill else None
+                    open_counter[0] += 1
     elif cur_pos == 1:
         if not np.isnan(cur_st) and cur_st > stop_price:
             stop_price = cur_st
+            stop_updated = True
         if not moved_to_be and initial_risk_ref and (c - entry_price) >= BREAKEVEN_AT_R * (entry_price - initial_risk_ref):
             stop_price = max(stop_price, entry_price)
             moved_to_be = True
+            stop_updated = True
             action = "HOLD LONG (-> breakeven)"
-        if l <= stop_price or cur_dir == -1:
-            exit_price = stop_price if l <= stop_price else c
-            pnl, new_equity = record_trade_close(pair, "ADX+Supertrend", "long", entry_price, initial_risk_ref, exit_price)
+        if l <= stop_price:
+            # broker's own attached stop handles this — don't call execute_exit,
+            # the position is already closed at OANDA if execution is live
+            pnl, new_equity = record_trade_close(pair, "ADX+Supertrend", "long", entry_price, initial_risk_ref, stop_price, risk_fraction)
             pnl_note = (pnl, new_equity)
-            action = "EXIT LONG"
-            cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be = 0, None, None, None, False
+            action = "EXIT LONG (stop hit)"
+            cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be, trade_id, risk_fraction = 0, None, None, None, False, None, 1.0
+        elif cur_dir == -1:
+            # reversal signal fires before the stop was touched — this needs
+            # an explicit close, the broker's stop wouldn't have fired yet
+            if trade_id:
+                execute_exit(trade_id)
+            pnl, new_equity = record_trade_close(pair, "ADX+Supertrend", "long", entry_price, initial_risk_ref, c, risk_fraction)
+            pnl_note = (pnl, new_equity)
+            action = "EXIT LONG (reversal)"
+            cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be, trade_id, risk_fraction = 0, None, None, None, False, None, 1.0
+        elif stop_updated and trade_id:
+            update_trailing_stop(trade_id, stop_price)
+            if action == "HOLD":
+                action = "HOLD LONG"
         elif action == "HOLD":
             action = "HOLD LONG"
     elif cur_pos == -1:
         if not np.isnan(cur_st) and cur_st < stop_price:
             stop_price = cur_st
+            stop_updated = True
         if not moved_to_be and initial_risk_ref and (entry_price - c) >= BREAKEVEN_AT_R * (initial_risk_ref - entry_price):
             stop_price = min(stop_price, entry_price)
             moved_to_be = True
+            stop_updated = True
             action = "HOLD SHORT (-> breakeven)"
-        if h >= stop_price or cur_dir == 1:
-            exit_price = stop_price if h >= stop_price else c
-            pnl, new_equity = record_trade_close(pair, "ADX+Supertrend", "short", entry_price, initial_risk_ref, exit_price)
+        if h >= stop_price:
+            pnl, new_equity = record_trade_close(pair, "ADX+Supertrend", "short", entry_price, initial_risk_ref, stop_price, risk_fraction)
             pnl_note = (pnl, new_equity)
-            action = "EXIT SHORT"
-            cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be = 0, None, None, None, False
+            action = "EXIT SHORT (stop hit)"
+            cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be, trade_id, risk_fraction = 0, None, None, None, False, None, 1.0
+        elif cur_dir == 1:
+            if trade_id:
+                execute_exit(trade_id)
+            pnl, new_equity = record_trade_close(pair, "ADX+Supertrend", "short", entry_price, initial_risk_ref, c, risk_fraction)
+            pnl_note = (pnl, new_equity)
+            action = "EXIT SHORT (reversal)"
+            cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be, trade_id, risk_fraction = 0, None, None, None, False, None, 1.0
+        elif stop_updated and trade_id:
+            update_trailing_stop(trade_id, stop_price)
+            if action == "HOLD":
+                action = "HOLD SHORT"
         elif action == "HOLD":
             action = "HOLD SHORT"
 
     state[pair] = {"state": cur_pos, "entry_price": entry_price, "initial_risk_ref": initial_risk_ref,
-                    "stop_price": stop_price, "moved_to_be": moved_to_be}
+                    "stop_price": stop_price, "moved_to_be": moved_to_be, "trade_id": trade_id, "risk_fraction": risk_fraction}
 
     detail = {"pair": pair, "close": c, "action": action, "position": cur_pos, "pnl_note": pnl_note}
     return detail, price_log, "ok"
@@ -237,13 +285,27 @@ def send_telegram(msg):
 
 
 def main():
+    if EXECUTION_ENABLED:
+        import oanda_client as oanda
+        env_label = f"OANDA {oanda.ENVIRONMENT.upper()}"
+        try:
+            live_balance = oanda.get_current_balance()
+            from journal import save_equity
+            save_equity(live_balance)
+            print(f"[{env_label}] Synced equity to live account balance: £{live_balance:,.2f}")
+        except Exception as e:
+            print(f"[warn] Could not sync live balance, using journal's tracked figure instead: {e}")
+    else:
+        print("[forward-test mode] OANDA credentials not set — signal logging only, no real orders.")
+
     price_log = load_price_log()
     state = load_state()
     details = []
+    open_counter = [0]  # tracks new entries opened earlier in this same run, see available_risk_fraction()
 
     for pair in PAIRS:
         try:
-            detail, price_log, status = process_pair(pair, price_log, state)
+            detail, price_log, status = process_pair(pair, price_log, state, open_counter)
             details.append(detail if detail else {"pair": pair, "action": f"SKIPPED ({status})"})
         except Exception as e:
             details.append({"pair": pair, "action": f"ERROR: {e}"})
@@ -254,9 +316,10 @@ def main():
     HOURLY_STATE_PATH.write_text(json.dumps(state, indent=2))
 
     active = [d for d in details if d.get("action", "").startswith(("ENTER", "EXIT")) or "breakeven" in d.get("action", "")]
+    env_tag = "[LIVE TRADING]" if EXECUTION_ENABLED else "[forward-test / signal only]"
     if active:
         equity = load_equity()
-        lines = [f"*ADX+Supertrend Update — Equity: £{equity:,.0f}*\n"]
+        lines = [f"*ADX+Supertrend Update {env_tag} — Equity: £{equity:,.0f}*\n"]
         for d in active:
             line = f"{d['pair']}: *{d['action']}* @ {d.get('close', '?')}"
             if d.get("pnl_note"):
