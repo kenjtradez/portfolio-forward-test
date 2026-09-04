@@ -1,24 +1,24 @@
 {
   "nas100": {
-    "state": 0,
-    "entry_price": null,
-    "risk_ref": null,
-    "vol_scale": 1.0,
+    "state": 1,
+    "entry_price": 29482.3203125,
+    "risk_ref": 28915.143694196428,
+    "vol_scale": 0.5442889430931572,
     "trade_id": null,
     "risk_fraction": 1.0
   },
   "donchian": {
     "EURGBP": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": -1,
+      "entry_price": 0.8585100173950195,
+      "risk_ref": 0.8603128762613024,
       "trade_id": null,
       "risk_fraction": 1.0
     },
     "EURCAD": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 1.6043200492858887,
+      "risk_ref": 1.599715048070635,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -51,9 +51,9 @@
       "risk_fraction": 1.0
     },
     "GBPCAD": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 1.868589997291565,
+      "risk_ref": 1.8627757090268817,
       "trade_id": null,
       "risk_fraction": 1.0
     }
