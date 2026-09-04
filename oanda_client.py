@@ -14,7 +14,7 @@ variables only — never hardcoded, never logged, never printed.
 import os
 import requests
 
-ENVIRONMENT = os.environ.get("OANDA_ENVIRONMENT", "practice")  # "practice" or "live"
+ENVIRONMENT = os.environ.get("OANDA_ENVIRONMENT") or "practice"  # falls back on empty string too, not just unset (GitHub Actions injects "" when a secret isn't configured, not a missing key)
 API_TOKEN = os.environ.get("OANDA_API_TOKEN")
 ACCOUNT_ID = os.environ.get("OANDA_ACCOUNT_ID")
 
