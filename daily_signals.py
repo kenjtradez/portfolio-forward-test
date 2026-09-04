@@ -35,7 +35,7 @@ DONCHIAN_INSTRUMENTS = {
     'EURJPY': {'yahoo': 'EURJPY=X', 'variant': 'long_only'},
     'DE30':   {'yahoo': '^GDAXI',   'variant': 'long_only'},
     'GBPCAD': {'yahoo': 'GBPCAD=X', 'variant': 'trend_filter'},
-    'XAUUSD':     {'yahoo': 'XAUUSD=X', 'variant': 'long_only'},
+    'XAUUSD':     {'yahoo': 'GC=F', 'variant': 'long_only'},
     'GBPCHF':     {'yahoo': 'GBPCHF=X', 'variant': 'trend_filter'},
     'NAS100_USD': {'yahoo': '^NDX',     'variant': 'long_only'},
     'SPX500':     {'yahoo': '^GSPC',    'variant': 'long_only'},
