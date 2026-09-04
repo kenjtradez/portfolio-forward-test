@@ -280,8 +280,18 @@ def send_telegram(msg):
     if not TG_TOKEN or not TG_CHAT_ID:
         print("[warn] Telegram not configured:\n" + msg)
         return
+    # Plain text, no parse_mode — see daily_signals.py's send_telegram for why:
+    # unpaired underscores in instrument names (e.g. NAS100_USD) silently
+    # break Telegram's legacy Markdown parser and reject the whole message.
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": TG_CHAT_ID, "text": msg, "parse_mode": "Markdown"})
+    try:
+        r = requests.post(url, data={"chat_id": TG_CHAT_ID, "text": msg}, timeout=15)
+        if r.status_code != 200:
+            print(f"[ERROR] Telegram send failed: HTTP {r.status_code} — {r.text}")
+        else:
+            print("[ok] Telegram message sent successfully.")
+    except Exception as e:
+        print(f"[ERROR] Telegram send raised an exception: {e}")
 
 
 def main():

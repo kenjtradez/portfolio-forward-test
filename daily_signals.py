@@ -255,8 +255,23 @@ def send_telegram(msg):
     if not TG_TOKEN or not TG_CHAT_ID:
         print("[warn] Telegram not configured:\n" + msg)
         return
+    # Plain text, no parse_mode — Telegram's legacy Markdown parser treats
+    # single underscores as italic delimiters, and instrument names like
+    # NAS100_USD contain an unpaired underscore. That silently breaks the
+    # ENTIRE message (Telegram rejects malformed entities outright), which
+    # is exactly what happened here — the message was built correctly but
+    # never delivered, with no visible error anywhere. Plain text removes
+    # this whole class of failure. Bold/italic markers (*text*) are left
+    # in the message body as plain asterisks — readable, just not styled.
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": TG_CHAT_ID, "text": msg, "parse_mode": "Markdown"})
+    try:
+        r = requests.post(url, data={"chat_id": TG_CHAT_ID, "text": msg}, timeout=15)
+        if r.status_code != 200:
+            print(f"[ERROR] Telegram send failed: HTTP {r.status_code} — {r.text}")
+        else:
+            print("[ok] Telegram message sent successfully.")
+    except Exception as e:
+        print(f"[ERROR] Telegram send raised an exception: {e}")
 
 
 def main():
