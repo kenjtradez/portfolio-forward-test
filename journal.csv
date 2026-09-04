@@ -1,2 +1,1 @@
 close_timestamp,instrument,strategy,direction,entry_price,risk_reference_price,exit_price,risk_distance,r_multiple,risked_gbp,pnl_gbp,equity_before,equity_after
-2026-09-04T00:02:53.604687+00:00,NAS100,Pivot S/R,long,29486.708984,28903.449916,29482.320312,583.259068,-0.008,10000.0,-75.24,1000000.0,999924.76
