@@ -1,24 +1,24 @@
 {
   "nas100": {
-    "state": 1,
-    "entry_price": 29482.3203125,
-    "risk_ref": 28886.837472098214,
-    "vol_scale": 0.4309172104420862,
+    "state": 0,
+    "entry_price": null,
+    "risk_ref": null,
+    "vol_scale": 1.0,
     "trade_id": null,
     "risk_fraction": 1.0
   },
   "donchian": {
     "EURGBP": {
-      "state": -1,
-      "entry_price": 0.8586099743843079,
-      "risk_ref": 0.8604128332505907,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
     "EURCAD": {
-      "state": 1,
-      "entry_price": 1.604640007019043,
-      "risk_ref": 1.6000350058037893,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -51,9 +51,37 @@
       "risk_fraction": 1.0
     },
     "GBPCAD": {
-      "state": 1,
-      "entry_price": 1.868839979171753,
-      "risk_ref": 1.8630256909070697,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "XAUUSD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "GBPCHF": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     }

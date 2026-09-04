@@ -35,11 +35,28 @@ DONCHIAN_INSTRUMENTS = {
     'EURJPY': {'yahoo': 'EURJPY=X', 'variant': 'long_only'},
     'DE30':   {'yahoo': '^GDAXI',   'variant': 'long_only'},
     'GBPCAD': {'yahoo': 'GBPCAD=X', 'variant': 'trend_filter'},
+    'XAUUSD':     {'yahoo': 'XAUUSD=X', 'variant': 'long_only'},
+    'GBPCHF':     {'yahoo': 'GBPCHF=X', 'variant': 'trend_filter'},
+    'NAS100_USD': {'yahoo': '^NDX',     'variant': 'long_only'},
+    'SPX500':     {'yahoo': '^GSPC',    'variant': 'long_only'},
 }
 # Best-validated variant per instrument, from the extended Donchian sweep:
 # baseline = plain reversal (no filters) — EURGBP, EURCAD, GBPUSD
-# long_only = shorts dropped — US30, EURJPY, DE30
-# trend_filter = only trade with a 100-day MA in agreement — GBPCAD
+# long_only = shorts dropped — US30, EURJPY, DE30, XAUUSD, NAS100_USD, SPX500
+# trend_filter = only trade with a 100-day MA in agreement — GBPCAD, GBPCHF
+#
+# XAUUSD, GBPCHF, NAS100_USD, SPX500 added after an out-of-sample audit: the
+# same 5-variant selection process was re-run on 21 previously-untouched
+# instruments (none of which had been through variant selection before) to
+# check whether the process itself replicates or was overfit to the original
+# 7. Only 13/21 held up with consistent in-sample AND out-of-sample results;
+# these 4 were the strongest of that batch. The other 17 were left out.
+#
+# NOTE: XAUUSD, NAS100_USD, and SPX500 already run under other strategies
+# (ADX+Supertrend basket; NAS100 also runs the separate Pivot S/R system).
+# This is intentional — different signals on the same instrument, tracked
+# separately in the journal by strategy name, same as EURGBP already running
+# both Donchian and ADX+Supertrend.
 
 
 def fetch_latest_daily_bar(symbol):
