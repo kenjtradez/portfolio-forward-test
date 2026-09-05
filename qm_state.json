@@ -1,0 +1,104 @@
+{
+  "AUDCAD": {
+    "order": null
+  },
+  "AUDCHF": {
+    "order": null
+  },
+  "AUDJPY": {
+    "order": null
+  },
+  "AUDNZD": {
+    "order": null
+  },
+  "AUDUSD": {
+    "order": null
+  },
+  "CADCHF": {
+    "order": null
+  },
+  "CADJPY": {
+    "order": null
+  },
+  "CHFJPY": {
+    "order": null
+  },
+  "EURAUD": {
+    "order": null
+  },
+  "EURCAD": {
+    "order": null
+  },
+  "EURCHF": {
+    "order": null
+  },
+  "EURGBP": {
+    "order": null
+  },
+  "EURJPY": {
+    "order": null
+  },
+  "EURNZD": {
+    "order": null
+  },
+  "EURUSD": {
+    "order": null
+  },
+  "GBPAUD": {
+    "order": null
+  },
+  "GBPCAD": {
+    "order": null
+  },
+  "GBPCHF": {
+    "order": null
+  },
+  "GBPJPY": {
+    "order": null
+  },
+  "GBPNZD": {
+    "order": null
+  },
+  "GBPUSD": {
+    "order": null
+  },
+  "NZDCAD": {
+    "order": null
+  },
+  "NZDJPY": {
+    "order": null
+  },
+  "NZDUSD": {
+    "order": null
+  },
+  "USDCAD": {
+    "order": null
+  },
+  "USDCHF": {
+    "order": null
+  },
+  "USDJPY": {
+    "order": null
+  },
+  "NAS100_USD": {
+    "order": null
+  },
+  "SPX500": {
+    "order": null
+  },
+  "US30": {
+    "order": null
+  },
+  "US2000": {
+    "order": null
+  },
+  "DE30": {
+    "order": null
+  },
+  "UK100": {
+    "order": null
+  },
+  "XAUUSD": {
+    "order": null
+  }
+}
