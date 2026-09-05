@@ -16,7 +16,7 @@ import requests
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from journal import record_trade_close, current_risk_gbp, load_equity, available_risk_fraction
+from journal import record_trade_close, current_risk_gbp, load_equity, available_risk_fraction, get_risk_pct
 from execution import execute_entry, execute_exit, EXECUTION_ENABLED
 
 BASE = Path(__file__).parent
@@ -129,17 +129,17 @@ def process_nas100(state, msgs, open_counter):
     prev_pos = s["state"]
 
     if prev_pos == 0 and close > pivot:
-        risk_frac = available_risk_fraction(open_counter[0])
+        risk_frac = available_risk_fraction("Pivot S/R", open_counter[0])
         if risk_frac <= 0:
             msgs.append(f"NAS100: signal fired (close > pivot) but SKIPPED — 10% total risk budget already full.")
         else:
             atr = atr14_from_log(log)
             risk_ref = close - atr if not np.isnan(atr) else close * 0.99
-            vol_scaled_risk_gbp = current_risk_gbp(risk_frac) * vol_scale
+            vol_scaled_risk_gbp = current_risk_gbp("Pivot S/R", risk_frac) * vol_scale
             fill = execute_entry("NAS100_USD", "long", vol_scaled_risk_gbp, risk_ref)
             trade_id = fill["trade_id"] if fill else None
             s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "vol_scale": vol_scale, "trade_id": trade_id, "risk_fraction": risk_frac})
-            open_counter[0] += 1
+            open_counter[0] += get_risk_pct("Pivot S/R")
             exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
             frac_note = f" [sized to {risk_frac:.0%} of full slice, risk budget partially used]" if risk_frac < 1.0 else ""
             msgs.append(f"*NAS100* — ENTER LONG @ {close:.1f} (risk ref {risk_ref:.1f}, ~£{vol_scaled_risk_gbp:,.0f} at risk incl. {vol_scale:.2f}x vol-scale){exec_note}{frac_note}")
@@ -198,18 +198,18 @@ def process_donchian_all(state, msgs, open_counter):
                     execute_exit(s["trade_id"])
                 pnl, new_equity = record_trade_close(inst, "Donchian(20)", "long", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
                 msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f}. P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
-            risk_frac = available_risk_fraction(open_counter[0])
+            risk_frac = available_risk_fraction("Donchian(20)", open_counter[0])
             if risk_frac <= 0:
                 msgs.append(f"{inst}: SHORT signal fired but SKIPPED — 10% total risk budget already full.")
                 s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
             else:
                 atr = atr14_from_log(inst_log)
                 risk_ref = close + atr if not np.isnan(atr) else close * 1.01
-                risk_gbp = current_risk_gbp(risk_frac)
+                risk_gbp = current_risk_gbp("Donchian(20)", risk_frac)
                 fill = execute_entry(inst, "short", risk_gbp, risk_ref)
                 trade_id = fill["trade_id"] if fill else None
                 s.update({"state": -1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
-                open_counter[0] += 1
+                open_counter[0] += get_risk_pct("Donchian(20)")
                 exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
                 frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
                 msgs.append(f"*{inst}* ({variant}) — ENTER SHORT @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
@@ -226,18 +226,18 @@ def process_donchian_all(state, msgs, open_counter):
                     execute_exit(s["trade_id"])
                 pnl, new_equity = record_trade_close(inst, "Donchian(20)", "short", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
                 msgs.append(f"*{inst}* — EXIT SHORT @ {close:.5f}. P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
-            risk_frac = available_risk_fraction(open_counter[0])
+            risk_frac = available_risk_fraction("Donchian(20)", open_counter[0])
             if risk_frac <= 0:
                 msgs.append(f"{inst}: LONG signal fired but SKIPPED — 10% total risk budget already full.")
                 s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
             else:
                 atr = atr14_from_log(inst_log)
                 risk_ref = close - atr if not np.isnan(atr) else close * 0.99
-                risk_gbp = current_risk_gbp(risk_frac)
+                risk_gbp = current_risk_gbp("Donchian(20)", risk_frac)
                 fill = execute_entry(inst, "long", risk_gbp, risk_ref)
                 trade_id = fill["trade_id"] if fill else None
                 s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
-                open_counter[0] += 1
+                open_counter[0] += get_risk_pct("Donchian(20)")
                 exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
                 frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
                 msgs.append(f"*{inst}* ({variant}) — ENTER LONG @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")

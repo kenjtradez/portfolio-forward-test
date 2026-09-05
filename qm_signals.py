@@ -31,7 +31,7 @@ import requests
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from journal import record_trade_close, current_risk_gbp, load_equity, available_risk_fraction
+from journal import record_trade_close, current_risk_gbp, load_equity, available_risk_fraction, get_risk_pct
 from execution import execute_entry, execute_exit, EXECUTION_ENABLED
 
 BASE = Path(__file__).parent
@@ -220,14 +220,18 @@ def process_instrument(inst, yahoo_symbol, state, open_counter):
                     filled = True; fill_time = t; break
             if filled:
                 risk_frac = order["risk_fraction"]
-                risk_gbp = current_risk_gbp(risk_frac)
+                risk_gbp = current_risk_gbp("QM+CISD+SBR", risk_frac)
                 direction_str = "short" if order["direction"] == -1 else "long"
                 fill = execute_entry(inst, direction_str, risk_gbp, order["stop"])
                 order["filled"] = True
                 order["fill_time"] = str(fill_time)
                 order["trade_id"] = fill["trade_id"] if fill else None
                 msg_lines.append(f"{inst}: LIMIT FILLED {direction_str.upper()} @ {order['entry']:.5f} (~£{risk_gbp:,.0f} at risk)")
-                open_counter[0] += 1
+                # NOTE: no open_counter increment here — this order's risk was
+                # already committed (and counted) the moment it was CREATED as
+                # a pending order, not when it later fills. Double-counting it
+                # here would inflate the same-run budget check for other
+                # instruments processed later in this run.
             elif pd.Timestamp(order["expiry_time"]) < df_m15.index[-1]:
                 msg_lines.append(f"{inst}: pending order EXPIRED unfilled @ {order['entry']:.5f}")
                 order = None
@@ -275,7 +279,7 @@ def process_instrument(inst, yahoo_symbol, state, open_counter):
                     stop_dist = entry_px - stop_px
                 if stop_dist > 0:
                     tp_px = entry_px - stop_dist*RR_TARGET if direction == -1 else entry_px + stop_dist*RR_TARGET
-                    risk_frac = available_risk_fraction(open_counter[0])
+                    risk_frac = available_risk_fraction("QM+CISD+SBR", open_counter[0])
                     if risk_frac <= 0:
                         msg_lines.append(f"{inst}: CISD signal fired but SKIPPED — 10% risk budget full")
                     else:
@@ -285,6 +289,7 @@ def process_instrument(inst, yahoo_symbol, state, open_counter):
                             "placed_time": str(now), "expiry_time": str(now + pd.Timedelta(minutes=15*ORDER_EXPIRY_BARS)),
                             "filled": False, "risk_fraction": risk_frac,
                         }
+                        open_counter[0] += get_risk_pct("QM+CISD+SBR")
                         dir_str = "SHORT" if direction == -1 else "LONG"
                         frac_note = f" [{risk_frac:.0%} slice]" if risk_frac < 1.0 else ""
                         msg_lines.append(f"{inst}: NEW PENDING {dir_str} limit @ {entry_px:.5f}, stop {stop_px:.5f}, target {tp_px:.5f}{frac_note}")

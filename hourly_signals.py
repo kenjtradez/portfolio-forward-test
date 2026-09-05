@@ -15,7 +15,7 @@ import requests
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from journal import record_trade_close, current_risk_gbp, load_equity, available_risk_fraction
+from journal import record_trade_close, current_risk_gbp, load_equity, available_risk_fraction, get_risk_pct
 from execution import execute_entry, execute_exit, update_trailing_stop, EXECUTION_ENABLED
 
 BASE = Path(__file__).parent
@@ -181,7 +181,7 @@ def process_pair(pair, price_log, state, open_counter):
     if cur_pos == 0:
         if not np.isnan(cur_adx) and cur_adx > ADX_THRESH and not np.isnan(cur_st):
             if prev_dir == -1 and cur_dir == 1:
-                risk_frac = available_risk_fraction(open_counter[0])
+                risk_frac = available_risk_fraction("ADX+Supertrend", open_counter[0])
                 if risk_frac <= 0:
                     action = "SIGNAL SKIPPED (risk budget full)"
                 else:
@@ -192,11 +192,11 @@ def process_pair(pair, price_log, state, open_counter):
                     moved_to_be = False
                     risk_fraction = risk_frac
                     action = "ENTER LONG" if risk_frac >= 1.0 else f"ENTER LONG ({risk_frac:.0%} slice)"
-                    fill = execute_entry(pair, "long", current_risk_gbp(risk_frac), stop_price)
+                    fill = execute_entry(pair, "long", current_risk_gbp("ADX+Supertrend", risk_frac), stop_price)
                     trade_id = fill["trade_id"] if fill else None
-                    open_counter[0] += 1
+                    open_counter[0] += get_risk_pct("ADX+Supertrend")
             elif prev_dir == 1 and cur_dir == -1:
-                risk_frac = available_risk_fraction(open_counter[0])
+                risk_frac = available_risk_fraction("ADX+Supertrend", open_counter[0])
                 if risk_frac <= 0:
                     action = "SIGNAL SKIPPED (risk budget full)"
                 else:
@@ -207,9 +207,9 @@ def process_pair(pair, price_log, state, open_counter):
                     moved_to_be = False
                     risk_fraction = risk_frac
                     action = "ENTER SHORT" if risk_frac >= 1.0 else f"ENTER SHORT ({risk_frac:.0%} slice)"
-                    fill = execute_entry(pair, "short", current_risk_gbp(risk_frac), stop_price)
+                    fill = execute_entry(pair, "short", current_risk_gbp("ADX+Supertrend", risk_frac), stop_price)
                     trade_id = fill["trade_id"] if fill else None
-                    open_counter[0] += 1
+                    open_counter[0] += get_risk_pct("ADX+Supertrend")
     elif cur_pos == 1:
         if not np.isnan(cur_st) and cur_st > stop_price:
             stop_price = cur_st
@@ -336,7 +336,7 @@ def main():
                 pnl, eq = d["pnl_note"]
                 line += f" — P&L £{pnl:,.0f}"
             else:
-                line += f" — ~£{current_risk_gbp():,.0f} at risk"
+                line += f" — ~£{current_risk_gbp('ADX+Supertrend'):,.0f} at risk"
             lines.append(line)
         send_telegram("\n".join(lines))
     else:

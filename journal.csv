@@ -1,1 +1,2 @@
 close_timestamp,instrument,strategy,direction,entry_price,risk_reference_price,exit_price,risk_distance,r_multiple,risked_gbp,pnl_gbp,equity_before,equity_after
+2026-09-05T13:32:30.159982+00:00,EURUSD,QM+CISD+SBR,short,1.15,1.155,1.155,0.005,-1.0,10000.0,-10000.0,1000000.0,990000.0,1.0
