@@ -1,17 +1,17 @@
 {
   "nas100": {
-    "state": 0,
-    "entry_price": null,
-    "risk_ref": null,
-    "vol_scale": 1.0,
+    "state": 1,
+    "entry_price": 29544.150390625,
+    "risk_ref": 28940.34891183036,
+    "vol_scale": 0.4237467683419745,
     "trade_id": null,
     "risk_fraction": 1.0
   },
   "donchian": {
     "EURGBP": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": -1,
+      "entry_price": 0.858959972858429,
+      "risk_ref": 0.8607663994884491,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -37,9 +37,9 @@
       "risk_fraction": 1.0
     },
     "EURJPY": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 179.83900451660156,
+      "risk_ref": 178.69557603236606,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -51,9 +51,9 @@
       "risk_fraction": 1.0
     },
     "GBPCAD": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 1.8700400590896606,
+      "risk_ref": 1.8644507698440551,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -133,13 +133,13 @@
       "best_price": null
     },
     "DE30": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 25953.9296875,
+      "risk_ref": 25733.899720982143,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 25513.869754464286,
+      "best_price": 25953.9296875
     },
     "USDJPY": {
       "state": 0,
@@ -151,13 +151,13 @@
       "best_price": null
     },
     "EURJPY": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 179.82899475097656,
+      "risk_ref": 178.68556626674106,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 177.5421377825056,
+      "best_price": 179.82899475097656
     },
     "US2000": {
       "state": 0,
