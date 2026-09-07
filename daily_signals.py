@@ -223,7 +223,7 @@ def compute_connors_rsi(inst_log, rsi_n=3, streak_n=2, rank_n=100):
     return True, (price_rsi + streak_rsi + rank_pct) / 3
 
 
-def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85):
+def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85, stop_atr_mult=2.0):
     log = load_price_log(CONNORS_LOG)
     connors_state = state.get("connors", {})
 
@@ -235,13 +235,14 @@ def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85):
             msgs.append(f"{inst}: already logged today.")
             continue
 
-        close = bar["close"]
-        row = {"instrument": inst, "date": pd.to_datetime(bar["date"]), "close": close, "high": bar["high"], "low": bar["low"]}
+        close, high, low = bar["close"], bar["high"], bar["low"]
+        row = {"instrument": inst, "date": pd.to_datetime(bar["date"]), "close": close, "high": high, "low": low}
         log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
         inst_log = log[log["instrument"] == inst]
 
         has_history, composite = compute_connors_rsi(inst_log)
-        s = connors_state.get(inst, {"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+        s = connors_state.get(inst, {"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None,
+                                      "risk_fraction": 1.0, "stop_price": None, "best_price": None})
         prev_pos = s["state"]
 
         if not has_history:
@@ -249,23 +250,61 @@ def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85):
             connors_state[inst] = s
             continue
 
+        atr = atr14_from_log(inst_log)
+        stopped_out = False
+
+        # === STEP 1: check the trailing stop FIRST, using the level set
+        # BEFORE today (from yesterday's ATR and best-price-so-far) - never
+        # a level computed from today's own high/low. Only after this check
+        # does the stop get allowed to ratchet, using today's now-complete
+        # data, for tomorrow's check. Same causally-correct sequencing
+        # already validated for QM Structural Rebuild and re-confirmed in
+        # the fresh backtest that justified adding this stop at all.
+        if prev_pos == 1 and s.get("stop_price") is not None:
+            if low <= s["stop_price"]:
+                stopped_out = True
+                if s.get("trade_id"):
+                    execute_exit(s["trade_id"])
+                pnl, new_equity = record_trade_close(inst, "Connors RSI", "long", s["entry_price"], s["risk_ref"], s["stop_price"], s.get("risk_fraction", 1.0))
+                msgs.append(f"*{inst}* — STOPPED OUT of LONG @ {s['stop_price']:.5f} (Connors RSI trailing stop). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
+                prev_pos = 0
+        elif prev_pos == -1 and s.get("stop_price") is not None:
+            if high >= s["stop_price"]:
+                stopped_out = True
+                if s.get("trade_id"):
+                    execute_exit(s["trade_id"])
+                pnl, new_equity = record_trade_close(inst, "Connors RSI", "short", s["entry_price"], s["risk_ref"], s["stop_price"], s.get("risk_fraction", 1.0))
+                msgs.append(f"*{inst}* — STOPPED OUT of SHORT @ {s['stop_price']:.5f} (Connors RSI trailing stop). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
+                prev_pos = 0
+
+        if stopped_out:
+            connors_state[inst] = s
+            continue
+
         if composite is None:
-            # Transient RSI edge case (zero-gain/zero-loss window) - matches
-            # the backtest's .ffill() behavior exactly: no new signal today,
-            # position stays exactly as it was.
+            # Transient RSI edge case - matches backtest's .ffill(): no new
+            # signal today, position stays exactly as it was, but the
+            # trailing stop (if any) still ratchets below using today's data.
+            if prev_pos == 1 and not np.isnan(atr):
+                s["best_price"] = max(s["best_price"], high)
+                new_stop = s["best_price"] - stop_atr_mult*atr
+                if new_stop > s["stop_price"]: s["stop_price"] = new_stop
+            elif prev_pos == -1 and not np.isnan(atr):
+                s["best_price"] = min(s["best_price"], low)
+                new_stop = s["best_price"] + stop_atr_mult*atr
+                if new_stop < s["stop_price"]: s["stop_price"] = new_stop
             action = {1: "HOLD LONG", -1: "HOLD SHORT", 0: "FLAT"}[prev_pos]
             msgs.append(f"{inst} (Connors RSI=n/a today): {action} @ {close:.5f}")
             connors_state[inst] = s
             continue
 
-        atr = atr14_from_log(inst_log)
-
         # STICKY signal, matching the backtested/validated logic exactly:
         # position only changes on a fresh extreme (composite<low_th or
         # >high_th) - it does NOT auto-flatten in the neutral zone, it
         # carries forward from the last extreme signal until the opposite
-        # extreme fires. Changing this would mean the live system no
-        # longer matches what was actually validated.
+        # extreme fires OR the trailing stop (checked above) is hit.
         if composite < low_th and prev_pos != 1:
             if prev_pos == -1:
                 if s.get("trade_id"):
@@ -275,17 +314,19 @@ def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85):
             risk_frac = available_risk_fraction("Connors RSI", open_counter[0])
             if risk_frac <= 0:
                 msgs.append(f"{inst}: LONG signal fired (Connors RSI={composite:.1f}) but SKIPPED — 10% risk budget full.")
-                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
             else:
                 risk_ref = close - atr if not np.isnan(atr) else close * 0.99
                 risk_gbp = current_risk_gbp("Connors RSI", risk_frac)
                 fill = execute_entry(inst, "long", risk_gbp, risk_ref)
                 trade_id = fill["trade_id"] if fill else None
-                s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                initial_stop = close - stop_atr_mult*atr if not np.isnan(atr) else close*0.97
+                s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac,
+                          "stop_price": initial_stop, "best_price": close})
                 open_counter[0] += get_risk_pct("Connors RSI")
                 exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
                 frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
-                msgs.append(f"*{inst}* (Connors RSI={composite:.1f}) — ENTER LONG @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
+                msgs.append(f"*{inst}* (Connors RSI={composite:.1f}) — ENTER LONG @ {close:.5f}, trailing stop {initial_stop:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
         elif composite > high_th and prev_pos != -1:
             if prev_pos == 1:
                 if s.get("trade_id"):
@@ -295,20 +336,34 @@ def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85):
             risk_frac = available_risk_fraction("Connors RSI", open_counter[0])
             if risk_frac <= 0:
                 msgs.append(f"{inst}: SHORT signal fired (Connors RSI={composite:.1f}) but SKIPPED — 10% risk budget full.")
-                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
             else:
                 risk_ref = close + atr if not np.isnan(atr) else close * 1.01
                 risk_gbp = current_risk_gbp("Connors RSI", risk_frac)
                 fill = execute_entry(inst, "short", risk_gbp, risk_ref)
                 trade_id = fill["trade_id"] if fill else None
-                s.update({"state": -1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                initial_stop = close + stop_atr_mult*atr if not np.isnan(atr) else close*1.03
+                s.update({"state": -1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac,
+                          "stop_price": initial_stop, "best_price": close})
                 open_counter[0] += get_risk_pct("Connors RSI")
                 exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
                 frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
-                msgs.append(f"*{inst}* (Connors RSI={composite:.1f}) — ENTER SHORT @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
+                msgs.append(f"*{inst}* (Connors RSI={composite:.1f}) — ENTER SHORT @ {close:.5f}, trailing stop {initial_stop:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
         else:
+            # holding (or flat) with no new extreme signal - ratchet the
+            # trailing stop using TODAY's now-complete data, for TOMORROW's
+            # check only (never re-checked against today's own range again).
+            if prev_pos == 1 and not np.isnan(atr):
+                s["best_price"] = max(s["best_price"], high)
+                new_stop = s["best_price"] - stop_atr_mult*atr
+                if new_stop > s["stop_price"]: s["stop_price"] = new_stop
+            elif prev_pos == -1 and not np.isnan(atr):
+                s["best_price"] = min(s["best_price"], low)
+                new_stop = s["best_price"] + stop_atr_mult*atr
+                if new_stop < s["stop_price"]: s["stop_price"] = new_stop
             action = {1: "HOLD LONG", -1: "HOLD SHORT", 0: "FLAT"}[prev_pos]
-            msgs.append(f"{inst} (Connors RSI={composite:.1f}): {action} @ {close:.5f}")
+            stop_note = f", stop {s['stop_price']:.5f}" if prev_pos != 0 and s.get("stop_price") else ""
+            msgs.append(f"{inst} (Connors RSI={composite:.1f}): {action} @ {close:.5f}{stop_note}")
 
         connors_state[inst] = s
 
