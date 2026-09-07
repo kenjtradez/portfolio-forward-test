@@ -64,6 +64,8 @@ STARTING_EQUITY = 1_000_000.0
 RISK_PCT = 0.01                        # default: 1% of current equity, per trade, before caps
 STRATEGY_RISK_PCT = {
     "Pivot S/R": 0.005,                 # reduced after audit - see module docstring
+    "Connors RSI": 0.005,                # reduced given thin absolute margin (backtested PF 1.02-1.14),
+                                          # despite unusually strong cost-stress robustness - see daily_signals.py
 }
 MAX_TOTAL_OPEN_RISK_PCT = 0.10         # 10% combined risk cap across all simultaneously open positions
 MAX_RISK_MULTIPLE_OF_STARTING = 5      # position size never exceeds 5x what that strategy's risk % of STARTING capital would be
@@ -101,9 +103,9 @@ def ensure_journal_exists():
 
 def compute_committed_risk_pct():
     """Sums the ACTUAL risk % already committed by every currently-open
-    position across all FOUR strategies, correctly weighting NAS100 Pivot's
-    reduced 0.5% against everyone else's standard 1%. Used for the total-
-    open-risk cap. Reads all four state files directly."""
+    position across all strategies, correctly weighting NAS100 Pivot and
+    Connors RSI's reduced 0.5% against everyone else's standard 1%. Used
+    for the total-open-risk cap. Reads all state files directly."""
     committed = 0.0
     if DAILY_STATE_PATH.exists():
         daily_state = json.loads(DAILY_STATE_PATH.read_text())
@@ -112,6 +114,9 @@ def compute_committed_risk_pct():
         for inst_state in daily_state.get("donchian", {}).values():
             if inst_state.get("state", 0) != 0:
                 committed += get_risk_pct("Donchian(20)")
+        for inst_state in daily_state.get("connors", {}).values():
+            if inst_state.get("state", 0) != 0:
+                committed += get_risk_pct("Connors RSI")
     if HOURLY_STATE_PATH.exists():
         hourly_state = json.loads(HOURLY_STATE_PATH.read_text())
         for inst_state in hourly_state.values():

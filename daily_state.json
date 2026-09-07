@@ -1,17 +1,17 @@
 {
   "nas100": {
-    "state": 1,
-    "entry_price": 29544.150390625,
-    "risk_ref": 28940.34891183036,
-    "vol_scale": 0.4237467683419745,
+    "state": 0,
+    "entry_price": null,
+    "risk_ref": null,
+    "vol_scale": 1.0,
     "trade_id": null,
     "risk_fraction": 1.0
   },
   "donchian": {
     "EURGBP": {
-      "state": -1,
-      "entry_price": 0.8587499856948853,
-      "risk_ref": 0.8605599843461172,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -51,9 +51,9 @@
       "risk_fraction": 1.0
     },
     "GBPCAD": {
-      "state": 1,
-      "entry_price": 1.8711999654769897,
-      "risk_ref": 1.865868534439632,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -79,6 +79,78 @@
       "risk_fraction": 1.0
     },
     "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    }
+  },
+  "connors": {
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "CHFJPY": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "XAUUSD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "DE30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "USDJPY": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "EURJPY": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US2000": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "UK100": {
       "state": 0,
       "entry_price": null,
       "risk_ref": null,

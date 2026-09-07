@@ -211,14 +211,14 @@ def process_pair(pair, price_log, state, open_counter):
                     trade_id = fill["trade_id"] if fill else None
                     open_counter[0] += get_risk_pct("ADX+Supertrend")
     elif cur_pos == 1:
-        if not np.isnan(cur_st) and cur_st > stop_price:
-            stop_price = cur_st
-            stop_updated = True
-        if not moved_to_be and initial_risk_ref and (c - entry_price) >= BREAKEVEN_AT_R * (entry_price - initial_risk_ref):
-            stop_price = max(stop_price, entry_price)
-            moved_to_be = True
-            stop_updated = True
-            action = "HOLD LONG (-> breakeven)"
+        # FIX: check the stop FIRST using the OLD stop_price (set from the
+        # previous bar - matching what a real resting stop order would have
+        # been during THIS bar), not a value just ratcheted using this same
+        # bar's own high/low. The bug: Supertrend at bar i needs bar i's own
+        # H/L to compute, so ratcheting the stop with cur_st BEFORE checking
+        # this same bar's low against it let the stop "see" the bar's own
+        # range before deciding whether that range breached it - a real stop
+        # order can't do that.
         if l <= stop_price:
             # broker's own attached stop handles this — don't call execute_exit,
             # the position is already closed at OANDA if execution is live
@@ -235,21 +235,22 @@ def process_pair(pair, price_log, state, open_counter):
             pnl_note = (pnl, new_equity)
             action = "EXIT LONG (reversal)"
             cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be, trade_id, risk_fraction = 0, None, None, None, False, None, 1.0
-        elif stop_updated and trade_id:
-            update_trailing_stop(trade_id, stop_price)
+        else:
+            # still open - NOW ratchet the stop using this bar's just-completed
+            # (fully known) Supertrend value, for use checking the NEXT bar
+            if not np.isnan(cur_st) and cur_st > stop_price:
+                stop_price = cur_st
+                stop_updated = True
+            if not moved_to_be and initial_risk_ref and (c - entry_price) >= BREAKEVEN_AT_R * (entry_price - initial_risk_ref):
+                stop_price = max(stop_price, entry_price)
+                moved_to_be = True
+                stop_updated = True
+                action = "HOLD LONG (-> breakeven)"
+            if stop_updated and trade_id:
+                update_trailing_stop(trade_id, stop_price)
             if action == "HOLD":
                 action = "HOLD LONG"
-        elif action == "HOLD":
-            action = "HOLD LONG"
     elif cur_pos == -1:
-        if not np.isnan(cur_st) and cur_st < stop_price:
-            stop_price = cur_st
-            stop_updated = True
-        if not moved_to_be and initial_risk_ref and (entry_price - c) >= BREAKEVEN_AT_R * (initial_risk_ref - entry_price):
-            stop_price = min(stop_price, entry_price)
-            moved_to_be = True
-            stop_updated = True
-            action = "HOLD SHORT (-> breakeven)"
         if h >= stop_price:
             pnl, new_equity = record_trade_close(pair, "ADX+Supertrend", "short", entry_price, initial_risk_ref, stop_price, risk_fraction)
             pnl_note = (pnl, new_equity)
@@ -262,12 +263,19 @@ def process_pair(pair, price_log, state, open_counter):
             pnl_note = (pnl, new_equity)
             action = "EXIT SHORT (reversal)"
             cur_pos, entry_price, stop_price, initial_risk_ref, moved_to_be, trade_id, risk_fraction = 0, None, None, None, False, None, 1.0
-        elif stop_updated and trade_id:
-            update_trailing_stop(trade_id, stop_price)
+        else:
+            if not np.isnan(cur_st) and cur_st < stop_price:
+                stop_price = cur_st
+                stop_updated = True
+            if not moved_to_be and initial_risk_ref and (entry_price - c) >= BREAKEVEN_AT_R * (initial_risk_ref - entry_price):
+                stop_price = min(stop_price, entry_price)
+                moved_to_be = True
+                stop_updated = True
+                action = "HOLD SHORT (-> breakeven)"
+            if stop_updated and trade_id:
+                update_trailing_stop(trade_id, stop_price)
             if action == "HOLD":
                 action = "HOLD SHORT"
-        elif action == "HOLD":
-            action = "HOLD SHORT"
 
     state[pair] = {"state": cur_pos, "entry_price": entry_price, "initial_risk_ref": initial_risk_ref,
                     "stop_price": stop_price, "moved_to_be": moved_to_be, "trade_id": trade_id, "risk_fraction": risk_fraction}

@@ -27,6 +27,25 @@ NAS100_LOG = BASE / "nas100_log.csv"
 DONCHIAN_LOG = BASE / "donchian_log.csv"
 DAILY_STATE_PATH = BASE / "daily_state.json"
 
+CONNORS_LOG = BASE / "connors_log.csv"
+
+CONNORS_INSTRUMENTS = {
+    'SPX500': '^GSPC', 'CHFJPY': 'CHFJPY=X', 'US30': '^DJI', 'NAS100_USD': '^NDX',
+    'XAUUSD': 'GC=F', 'DE30': '^GDAXI', 'USDJPY': 'USDJPY=X', 'EURJPY': 'EURJPY=X',
+    'US2000': '^RUT', 'UK100': '^FTSE',
+}
+# Selected as the 10 instruments (of 34 backtested) showing profit factor > 1.08
+# in the full validation - see the Connors RSI Composite deep-dive audit:
+# mechanical audit clean, 100th-percentile randomization test, cost-stress
+# robust (PF 1.05->1.04 at 5x cost, the most robust of 8 mean-reversion
+# candidates tested), bootstrap worst-case drawdown only -1.9%, low
+# correlation with Donchian (0.61) and NAS100 Pivot (0.51) and with the
+# other 7 mean-reversion variants tested alongside it (0.2-0.5) - genuinely
+# distinct signal, not redundant with what's already live.
+# Runs at 0.5% risk (same precedent as NAS100 Pivot) given its overall
+# margin is thin in absolute terms (backtested PF 1.02-1.14) even though
+# unusually robust to cost stress specifically.
+
 DONCHIAN_INSTRUMENTS = {
     'EURGBP': {'yahoo': 'EURGBP=X', 'variant': 'baseline'},
     'EURCAD': {'yahoo': 'EURCAD=X', 'variant': 'baseline'},
@@ -155,6 +174,145 @@ def process_nas100(state, msgs, open_counter):
         msgs.append(f"NAS100: {action} @ {close:.1f} (pivot {pivot:.1f}, resistance {resistance:.1f})")
 
     state["nas100"] = s
+    return state, log
+
+
+def rsi_series(closes, n):
+    """Standard RSI, causal by construction (rolling mean of gains/losses).
+    Deliberately NOT special-cased for zero-loss/zero-gain windows (which
+    would naively produce NaN here) - the backtest that validated this
+    strategy used this exact naive formula, and its outer .ffill() treated
+    those NaN moments as 'no new signal today, stay sticky' rather than a
+    special RSI=100/0 case. Matching that exactly (see compute_connors_rsi)
+    preserves fidelity with what was actually tested - inventing a more
+    'correct' RSI convention here would make live behavior diverge from
+    the validated backtest on these (rare) days."""
+    delta = closes.diff()
+    gain = delta.clip(lower=0).rolling(n).mean()
+    loss = -delta.clip(upper=0).rolling(n).mean()
+    rs = gain / loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
+
+def compute_connors_rsi(inst_log, rsi_n=3, streak_n=2, rank_n=100):
+    """Connors RSI composite: average of (RSI of price, RSI of the up/down
+    streak length, percentile rank of today's return vs trailing rank_n
+    days). Matches the backtested/validated construction exactly - see
+    strategy_catalog deep-dive.
+
+    Returns a tuple (has_enough_history: bool, composite: float or None).
+    composite is None either because there isn't enough history yet
+    (has_enough_history=False), or because an RSI component hit a
+    transient zero-gain/zero-loss window and is NaN today
+    (has_enough_history=True, composite=None) - the backtest's .ffill()
+    treated that second case as 'no new signal today, stay sticky', which
+    the caller must replicate exactly, not as 'still building history'."""
+    closes = inst_log["close"].reset_index(drop=True)
+    if len(closes) < rank_n + rsi_n + 5:
+        return False, None
+    price_rsi = rsi_series(closes, rsi_n).iloc[-1]
+    updown = np.sign(closes.diff()).fillna(0)
+    streak = updown.groupby((updown != updown.shift()).cumsum()).cumcount() + 1
+    streak = streak * updown
+    streak_rsi = rsi_series(streak, streak_n).iloc[-1]
+    ret = closes.pct_change()
+    recent = ret.tail(rank_n + 1)
+    rank_pct = (recent.iloc[:-1] < recent.iloc[-1]).mean() * 100 if len(recent) > 1 else 50.0
+    if np.isnan(price_rsi) or np.isnan(streak_rsi):
+        return True, None
+    return True, (price_rsi + streak_rsi + rank_pct) / 3
+
+
+def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85):
+    log = load_price_log(CONNORS_LOG)
+    connors_state = state.get("connors", {})
+
+    for inst, yahoo_symbol in CONNORS_INSTRUMENTS.items():
+        bar = fetch_latest_daily_bar(yahoo_symbol)
+        inst_log = log[log["instrument"] == inst]
+
+        if pd.to_datetime(bar["date"]) in set(inst_log["date"]):
+            msgs.append(f"{inst}: already logged today.")
+            continue
+
+        close = bar["close"]
+        row = {"instrument": inst, "date": pd.to_datetime(bar["date"]), "close": close, "high": bar["high"], "low": bar["low"]}
+        log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
+        inst_log = log[log["instrument"] == inst]
+
+        has_history, composite = compute_connors_rsi(inst_log)
+        s = connors_state.get(inst, {"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+        prev_pos = s["state"]
+
+        if not has_history:
+            msgs.append(f"{inst} (Connors RSI): building history, not enough data yet.")
+            connors_state[inst] = s
+            continue
+
+        if composite is None:
+            # Transient RSI edge case (zero-gain/zero-loss window) - matches
+            # the backtest's .ffill() behavior exactly: no new signal today,
+            # position stays exactly as it was.
+            action = {1: "HOLD LONG", -1: "HOLD SHORT", 0: "FLAT"}[prev_pos]
+            msgs.append(f"{inst} (Connors RSI=n/a today): {action} @ {close:.5f}")
+            connors_state[inst] = s
+            continue
+
+        atr = atr14_from_log(inst_log)
+
+        # STICKY signal, matching the backtested/validated logic exactly:
+        # position only changes on a fresh extreme (composite<low_th or
+        # >high_th) - it does NOT auto-flatten in the neutral zone, it
+        # carries forward from the last extreme signal until the opposite
+        # extreme fires. Changing this would mean the live system no
+        # longer matches what was actually validated.
+        if composite < low_th and prev_pos != 1:
+            if prev_pos == -1:
+                if s.get("trade_id"):
+                    execute_exit(s["trade_id"])
+                pnl, new_equity = record_trade_close(inst, "Connors RSI", "short", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
+                msgs.append(f"*{inst}* — EXIT SHORT @ {close:.5f} (Connors RSI). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+            risk_frac = available_risk_fraction("Connors RSI", open_counter[0])
+            if risk_frac <= 0:
+                msgs.append(f"{inst}: LONG signal fired (Connors RSI={composite:.1f}) but SKIPPED — 10% risk budget full.")
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+            else:
+                risk_ref = close - atr if not np.isnan(atr) else close * 0.99
+                risk_gbp = current_risk_gbp("Connors RSI", risk_frac)
+                fill = execute_entry(inst, "long", risk_gbp, risk_ref)
+                trade_id = fill["trade_id"] if fill else None
+                s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                open_counter[0] += get_risk_pct("Connors RSI")
+                exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
+                frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
+                msgs.append(f"*{inst}* (Connors RSI={composite:.1f}) — ENTER LONG @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
+        elif composite > high_th and prev_pos != -1:
+            if prev_pos == 1:
+                if s.get("trade_id"):
+                    execute_exit(s["trade_id"])
+                pnl, new_equity = record_trade_close(inst, "Connors RSI", "long", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
+                msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f} (Connors RSI). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+            risk_frac = available_risk_fraction("Connors RSI", open_counter[0])
+            if risk_frac <= 0:
+                msgs.append(f"{inst}: SHORT signal fired (Connors RSI={composite:.1f}) but SKIPPED — 10% risk budget full.")
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+            else:
+                risk_ref = close + atr if not np.isnan(atr) else close * 1.01
+                risk_gbp = current_risk_gbp("Connors RSI", risk_frac)
+                fill = execute_entry(inst, "short", risk_gbp, risk_ref)
+                trade_id = fill["trade_id"] if fill else None
+                s.update({"state": -1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                open_counter[0] += get_risk_pct("Connors RSI")
+                exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
+                frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
+                msgs.append(f"*{inst}* (Connors RSI={composite:.1f}) — ENTER SHORT @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
+        else:
+            action = {1: "HOLD LONG", -1: "HOLD SHORT", 0: "FLAT"}[prev_pos]
+            msgs.append(f"{inst} (Connors RSI={composite:.1f}): {action} @ {close:.5f}")
+
+        connors_state[inst] = s
+
+    state["connors"] = connors_state
     return state, log
 
 
@@ -294,12 +452,17 @@ def main():
 
     state, nas100_log = process_nas100(state, msgs, open_counter)
     state, donchian_log = process_donchian_all(state, msgs, open_counter)
+    state, connors_log = process_connors_all(state, msgs, open_counter)
 
     nas100_log.to_csv(NAS100_LOG, index=False)
     # trim donchian log per-instrument to last 600 rows to keep file size sane
     trimmed = [donchian_log[donchian_log["instrument"] == inst].sort_values("date").tail(600) for inst in DONCHIAN_INSTRUMENTS]
     donchian_log = pd.concat(trimmed, ignore_index=True)
     donchian_log.to_csv(DONCHIAN_LOG, index=False)
+    # Connors RSI needs 100+ days of history for its rank component - keep 400 rows of headroom
+    trimmed_connors = [connors_log[connors_log["instrument"] == inst].sort_values("date").tail(400) for inst in CONNORS_INSTRUMENTS]
+    connors_log = pd.concat(trimmed_connors, ignore_index=True)
+    connors_log.to_csv(CONNORS_LOG, index=False)
     DAILY_STATE_PATH.write_text(json.dumps(state, indent=2))
 
     equity = load_equity()

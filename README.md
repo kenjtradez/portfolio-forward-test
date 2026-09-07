@@ -1,31 +1,76 @@
-# Portfolio Forward Test — £1,000,000, 1% Risk Per Trade
+# Portfolio Forward Test — £1,000,000, Per-Strategy Risk
 
-Three validated strategies, one shared account, one journal — **now covering all 34 instruments** the ADX+Supertrend system has been validated on (expanded from an initial 12-pair pilot; all 34 came back profitable, in-sample and out-of-sample, no exceptions).
+**Live now: NAS100 Pivot S/R, the 11-instrument Donchian(20) basket, and Connors RSI Composite (10 instruments).**
+ADX+Supertrend and QM+CISD+SBR were removed after a full mechanical audit
+found real lookahead bugs in both — see "Removed strategies" below before
+ever re-enabling either.
 
-| Strategy | Instrument(s) | Cadence | Backtest result |
-|---|---|---|---|
-| Pivot S/R (long-only, vol-scaled) | NAS100 | Daily | Sharpe 1.25 (2016-26) / 0.76 (2008-26 full history) |
-| Donchian(20) (reversal) | EURGBP | Daily | Sharpe 0.58, PF 1.94 |
-| ADX(14)>25 + Supertrend(10,3) | **All 34 instruments** (full FX/index/gold universe tested) | Hourly | Profitable on 34/34, IS and OOS, across every instrument tested |
+| Strategy | Instrument(s) | Cadence | Risk/trade | True backtest result (post-audit) |
+|---|---|---|---|---|
+| Pivot S/R (long-only, vol-scaled) | NAS100 | Daily | 0.5% | Sharpe 0.91 (full 2008-26 history, causal vol-scaling) |
+| Donchian(20) (7 variants) | 11 instruments | Daily | 1% | Sharpe 0.36-0.58 per instrument, unaffected by the audit |
+| Connors RSI Composite | 10 instruments | Daily | 0.5% | PF 1.02-1.14 per instrument, 100th-percentile randomization test, correlation 0.5-0.6 with the other two live strategies |
 
 **This places no real trades. It's a forward-test journal.**
 
-## Fresh start (2nd reset)
+## Removed strategies — DO NOT re-enable without a full rebuild + fresh audit
 
-This repo was reset once already to consolidate three prior single-strategy repos.
-It has now been reset **again** to expand the hourly system from its original
-12-pair pilot to the full 34-instrument universe. Equity is back to exactly
-£1,000,000, journal is empty, all 34+2 positions start flat. This is a clean
-slate specifically because the instrument set materially changed — comparing
-against the old 12-pair equity curve wouldn't be meaningful once the book is
-this much bigger.
+**ADX+Supertrend** (34 instruments, hourly) and **QM+CISD+SBR** (34
+instruments, 1H→15m) both looked extensively validated — multi-instrument
+sweeps, in-sample/out-of-sample splits, parameter sensitivity, even a
+2000-simulation randomization test showing results ~10σ and ~8σ beyond
+chance. All of that was real, and all of it was validating a bug, not a
+genuine edge:
+
+- **ADX+Supertrend**: the trailing stop was ratcheted using each bar's own
+  Supertrend value (which needs that bar's own full high/low range to
+  compute), then tested against that *same* bar's high/low — letting the
+  stop "see" the bar's range before deciding whether it had been breached.
+  Present in both the backtest and the live code. Fixed and re-tested:
+  true edge is negative, ~10 standard deviations *below* random chance,
+  across all 34 instruments and multiple alternative stop designs.
+- **QM+CISD+SBR**: the backtest's multi-timeframe alignment anchored the
+  15-minute lookup on the 1-hour bar's *label* instead of its actual close
+  time (H1 bars are left-labeled — the "04:00" bar covers 04:00-05:00 and
+  isn't known until 05:00). This let the origin-candle search and fill
+  check use up to 45 minutes of price action from *before* the signal
+  existed. The live code was naturally immune (real API calls can't return
+  future bars), but the backtest that justified deploying it was not.
+  Fixed and re-tested: true edge is negative, ~2.6σ below random chance.
+
+Both are the exact same lesson: statistical rigor (randomization tests,
+IS/OOS splits, parameter sweeps) proves a backtested pattern isn't random
+noise — it cannot prove the backtest was simulated correctly. A structural
+bug that consistently biases results the same way will pass every one of
+those tests, because none of them ask "could this specific value have
+existed at this specific moment." That mechanical trace has to happen
+*first*, for every strategy, before any statistical layer is trusted.
+
+Their code and disabled workflow files are kept in this repo as an audit
+trail (see `.github/workflows/hourly.yml` and `.github/workflows/qm_signals.yml`,
+both have `schedule:` removed, `workflow_dispatch` only) — not as
+something to casually turn back on.
+
+## Fresh start (3rd reset)
+
+Equity is back to exactly £1,000,000, journal is empty, every position
+across all four strategies' state files starts flat. Two strategies are
+now permanently disabled (see above); NAS100 Pivot and Donchian continue
+under a revised, per-strategy risk model (see below).
 
 ## How risk is tracked
 
 - Starting capital: **£1,000,000**
-- Risk per trade: **1% of current equity** (compounds as equity changes)
-- Every closed trade is measured in **R-multiples** (P&L ÷ risk distance at entry), then converted to £: `£P&L = R_multiple × (1% × equity_at_entry)`
-- This sidesteps needing real lot-sizing/contract specs for 14 instruments across multiple currencies — R-multiples are currency-agnostic and are how prop desks track risk-based performance regardless of what's actually being traded.
+- Risk per trade: **per-strategy %** of current equity (compounds), capped
+  at 5x what that % of *starting* capital would be, and capped in total
+  across all simultaneously open positions at **10%**
+- **NAS100 Pivot runs at 0.5%**, half the standard rate — added after an
+  audit found it was the most fragile of the original four on cost
+  sensitivity, walk-forward consistency, and bootstrap drawdown range,
+  even though its edge itself is genuine
+- Donchian runs at the standard **1%**
+- Every closed trade is measured in **R-multiples** (P&L ÷ risk distance at entry), then converted to £: `£P&L = R_multiple × (that strategy's risk% × equity_at_entry)`
+- This sidesteps needing real lot-sizing/contract specs for instruments across multiple currencies — R-multiples are currency-agnostic and are how prop desks track risk-based performance regardless of what's actually being traded.
 
 **Risk reference by strategy:**
 - **ADX+Supertrend**: uses its real trailing stop — genuine risk distance.
