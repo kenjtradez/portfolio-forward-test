@@ -16,9 +16,9 @@
       "risk_fraction": 1.0
     },
     "EURCAD": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 1.6049799919128418,
+      "risk_ref": 1.600722133554731,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -38,8 +38,8 @@
     },
     "EURJPY": {
       "state": 1,
-      "entry_price": 179.83900451660156,
-      "risk_ref": 178.69557603236606,
+      "entry_price": 178.58799743652344,
+      "risk_ref": 177.38914009312222,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -52,8 +52,8 @@
     },
     "GBPCAD": {
       "state": 1,
-      "entry_price": 1.8700400590896606,
-      "risk_ref": 1.8644507698440551,
+      "entry_price": 1.869629979133606,
+      "risk_ref": 1.864293545311519,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -97,13 +97,13 @@
       "best_price": null
     },
     "CHFJPY": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 189.8679962158203,
+      "risk_ref": 188.328138671875,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 186.78828112792968,
+      "best_price": 189.8679962158203
     },
     "US30": {
       "state": 0,
@@ -138,17 +138,17 @@
       "risk_ref": 25733.899720982143,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 25513.869754464286,
-      "best_price": 25953.9296875
+      "stop_price": 25738.12689732143,
+      "best_price": 26167.9296875
     },
     "USDJPY": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 153.61099243164062,
+      "risk_ref": 152.4181358380999,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 151.22527924455915,
+      "best_price": 153.61099243164062
     },
     "EURJPY": {
       "state": 1,
