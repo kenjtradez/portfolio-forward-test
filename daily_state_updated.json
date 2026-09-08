@@ -1,0 +1,263 @@
+{
+  "nas100": {
+    "state": 0,
+    "entry_price": null,
+    "risk_ref": null,
+    "vol_scale": 1.0,
+    "trade_id": null,
+    "risk_fraction": 1.0
+  },
+  "donchian": {
+    "EURGBP": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "EURCAD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "GBPUSD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "US30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "EURJPY": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "DE30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "GBPCAD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "XAUUSD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "GBPCHF": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    }
+  },
+  "connors": {
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "CHFJPY": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "US30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "XAUUSD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "DE30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "USDJPY": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "EURJPY": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "US2000": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    },
+    "UK100": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0,
+      "stop_price": null,
+      "best_price": null
+    }
+  },
+  "monday_effect": {
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US2000": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    }
+  },
+  "rsi2": {
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "entry_day_idx": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "entry_day_idx": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US2000": {
+      "state": 0,
+      "entry_price": null,
+      "entry_day_idx": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "DE30": {
+      "state": 0,
+      "entry_price": null,
+      "entry_day_idx": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    }
+  }
+}

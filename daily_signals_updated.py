@@ -27,6 +27,39 @@ NAS100_LOG = BASE / "nas100_log.csv"
 DONCHIAN_LOG = BASE / "donchian_log.csv"
 DAILY_STATE_PATH = BASE / "daily_state.json"
 
+RSI2_LOG = BASE / "rsi2_log.csv"
+
+RSI2_INSTRUMENTS = {
+    'NAS100_USD': '^NDX', 'SPX500': '^GSPC', 'US2000': '^RUT', 'DE30': '^GDAXI',
+}
+# RSI(2) Mean Reversion (Connors): buy when RSI(2)<10 AND close>200-day MA,
+# exit when RSI(2)>50 OR a 10-day time stop, whichever comes first. PF 1.22-
+# 1.81 per instrument, 100th-percentile randomization test, cost-stress
+# holds to 5x (PF 1.24). Runs at 0.5% given a REAL, confirmed tail risk:
+# bootstrap worst-case drawdown -65.3% at standard 1% sizing - this is a
+# directional, non-hedged position (long only against a moving-average
+# filter), not a mean-reversion strategy with a tight stop, so the
+# reduced sizing here is a deliberate, not-thin-margin-driven choice,
+# unlike NAS100 Pivot's or Connors RSI Composite's 0.5%.
+
+MONDAY_LOG = BASE / "monday_effect_log.csv"
+
+MONDAY_EFFECT_INSTRUMENTS = {
+    'NAS100_USD': '^NDX', 'SPX500': '^GSPC', 'US30': '^DJI', 'US2000': '^RUT',
+}
+# Selected from the 34-instrument sweep: these 4 (all equity indices) showed
+# PF 1.38-1.52 for the Monday effect, the strongest and cleanest of any
+# instrument tested - see the book-strategy deep-dive audit. Randomization
+# test 100th percentile, both IS (0.801) and OOS (2.040) Sharpe positive,
+# cost-stress robust (PF 1.453->1.060 even at 5x cost), and importantly LOW
+# correlation (0.26-0.40) with NAS100 Pivot/Donchian/Connors RSI - genuinely
+# distinct, not redundant. Runs at standard 1% risk given its cost-stress
+# margin, unlike the thinner-margin strategies at 0.5%.
+# Mechanic: enter LONG at Friday's close, hold over the weekend, exit at
+# the following Monday's close - matching exactly what was backtested
+# (which measured Monday's close-to-close return, i.e. Friday-close to
+# Monday-close).
+
 CONNORS_LOG = BASE / "connors_log.csv"
 
 CONNORS_INSTRUMENTS = {
@@ -223,6 +256,129 @@ def compute_connors_rsi(inst_log, rsi_n=3, streak_n=2, rank_n=100):
     return True, (price_rsi + streak_rsi + rank_pct) / 3
 
 
+def process_monday_effect_all(state, msgs, open_counter):
+    log = load_price_log(MONDAY_LOG)
+    monday_state = state.get("monday_effect", {})
+
+    for inst, yahoo_symbol in MONDAY_EFFECT_INSTRUMENTS.items():
+        bar = fetch_latest_daily_bar(yahoo_symbol)
+        inst_log = log[log["instrument"] == inst]
+        bar_date = pd.to_datetime(bar["date"])
+
+        if bar_date in set(inst_log["date"]):
+            msgs.append(f"{inst}: already logged today.")
+            continue
+
+        close = bar["close"]
+        row = {"instrument": inst, "date": bar_date, "close": close}
+        log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
+
+        s = monday_state.get(inst, {"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+        weekday = bar_date.dayofweek  # Monday=0, ..., Friday=4
+
+        # === EXIT: if a position is open (entered last Friday) and today
+        # is Monday, close it at today's close - matching exactly what was
+        # backtested (Friday-close to Monday-close return).
+        if s["state"] == 1 and weekday == 0:
+            if s.get("trade_id"):
+                execute_exit(s["trade_id"])
+            pnl, new_equity = record_trade_close(inst, "Monday Effect", "long", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
+            msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f} (Monday Effect). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+            s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+
+        # === ENTRY: only on Friday, only if currently flat.
+        elif s["state"] == 0 and weekday == 4:
+            risk_frac = available_risk_fraction("Monday Effect", open_counter[0])
+            if risk_frac <= 0:
+                msgs.append(f"{inst}: Friday entry signal but SKIPPED — 10% risk budget full.")
+            else:
+                risk_ref = close * 0.99  # 1% nominal stop-distance for position sizing purposes only; this strategy has no real stop, it exits Monday regardless
+                risk_gbp = current_risk_gbp("Monday Effect", risk_frac)
+                fill = execute_entry(inst, "long", risk_gbp, risk_ref)
+                trade_id = fill["trade_id"] if fill else None
+                s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                open_counter[0] += get_risk_pct("Monday Effect")
+                exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
+                frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
+                msgs.append(f"*{inst}* — ENTER LONG @ {close:.5f} (Monday Effect, Friday hold-over-weekend) (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
+        else:
+            action = "HOLD (over weekend)" if s["state"] == 1 else "FLAT (not Friday)"
+            msgs.append(f"{inst} (Monday Effect): {action} @ {close:.5f}")
+
+        monday_state[inst] = s
+
+    state["monday_effect"] = monday_state
+    return state, log
+
+
+def process_rsi2_all(state, msgs, open_counter, rsi_entry_th=10, rsi_exit_th=50, ma_len=200, max_hold_days=10):
+    log = load_price_log(RSI2_LOG)
+    rsi2_state = state.get("rsi2", {})
+
+    for inst, yahoo_symbol in RSI2_INSTRUMENTS.items():
+        bar = fetch_latest_daily_bar(yahoo_symbol)
+        inst_log = log[log["instrument"] == inst]
+
+        if pd.to_datetime(bar["date"]) in set(inst_log["date"]):
+            msgs.append(f"{inst}: already logged today.")
+            continue
+
+        close = bar["close"]
+        row = {"instrument": inst, "date": pd.to_datetime(bar["date"]), "close": close, "high": bar["high"], "low": bar["low"]}
+        log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
+        inst_log = log[log["instrument"] == inst]
+
+        s = rsi2_state.get(inst, {"state": 0, "entry_price": None, "entry_day_idx": None, "trade_id": None, "risk_fraction": 1.0})
+
+        closes = inst_log["close"].reset_index(drop=True)
+        if len(closes) < ma_len + 5:
+            msgs.append(f"{inst} (RSI2): building history, not enough data yet.")
+            rsi2_state[inst] = s
+            continue
+
+        rsi2 = rsi_series(closes, 2).iloc[-1]
+        ma200 = closes.rolling(ma_len).mean().iloc[-1]
+        cur_day_idx = len(closes) - 1
+
+        if np.isnan(rsi2) or np.isnan(ma200):
+            msgs.append(f"{inst} (RSI2=n/a today): {'HOLD LONG' if s['state']==1 else 'FLAT'} @ {close:.5f}")
+            rsi2_state[inst] = s
+            continue
+
+        if s["state"] == 1:
+            days_held = cur_day_idx - s["entry_day_idx"]
+            if rsi2 > rsi_exit_th or days_held >= max_hold_days:
+                if s.get("trade_id"):
+                    execute_exit(s["trade_id"])
+                pnl, new_equity = record_trade_close(inst, "RSI(2) Mean Reversion", "long", s["entry_price"], s["entry_price"]*0.97, close, s.get("risk_fraction", 1.0))
+                exit_reason = "RSI>50" if rsi2 > rsi_exit_th else f"{max_hold_days}-day time stop"
+                msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f} (RSI2={rsi2:.1f}, {exit_reason}). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+                s.update({"state": 0, "entry_price": None, "entry_day_idx": None, "trade_id": None, "risk_fraction": 1.0})
+            else:
+                msgs.append(f"{inst} (RSI2={rsi2:.1f}): HOLD LONG @ {close:.5f} (day {days_held+1}/{max_hold_days})")
+
+        elif s["state"] == 0 and rsi2 < rsi_entry_th and close > ma200:
+            risk_frac = available_risk_fraction("RSI(2) Mean Reversion", open_counter[0])
+            if risk_frac <= 0:
+                msgs.append(f"{inst}: LONG signal fired (RSI2={rsi2:.1f}) but SKIPPED — 10% risk budget full.")
+            else:
+                risk_gbp = current_risk_gbp("RSI(2) Mean Reversion", risk_frac)
+                fill = execute_entry(inst, "long", risk_gbp, close*0.97)
+                trade_id = fill["trade_id"] if fill else None
+                s.update({"state": 1, "entry_price": close, "entry_day_idx": cur_day_idx, "trade_id": trade_id, "risk_fraction": risk_frac})
+                open_counter[0] += get_risk_pct("RSI(2) Mean Reversion")
+                exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
+                frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
+                msgs.append(f"*{inst}* (RSI2={rsi2:.1f}, close>{ma_len}MA) — ENTER LONG @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
+        else:
+            msgs.append(f"{inst} (RSI2={rsi2:.1f}): FLAT @ {close:.5f}")
+
+        rsi2_state[inst] = s
+
+    state["rsi2"] = rsi2_state
+    return state, log
+
+
 def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85, stop_atr_mult=2.0):
     log = load_price_log(CONNORS_LOG)
     connors_state = state.get("connors", {})
@@ -371,7 +527,7 @@ def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85, stop_a
     return state, log
 
 
-def process_donchian_all(state, msgs, open_counter):
+def process_donchian_all(state, msgs, open_counter, activate_r=1.0, trail_mult=1.5):
     log = load_price_log(DONCHIAN_LOG)
     donchian_state = state.get("donchian", {})
 
@@ -384,16 +540,52 @@ def process_donchian_all(state, msgs, open_counter):
             msgs.append(f"{inst}: already logged today.")
             continue
 
-        close = bar["close"]
-        row = {"instrument": inst, "date": pd.to_datetime(bar["date"]), "close": close, "high": bar["high"], "low": bar["low"]}
+        close, high, low = bar["close"], bar["high"], bar["low"]
+        row = {"instrument": inst, "date": pd.to_datetime(bar["date"]), "close": close, "high": high, "low": low}
         log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
         inst_log = log[log["instrument"] == inst]  # refresh after append
 
         ceiling = inst_log["close"].tail(20).max()
         floor = inst_log["close"].tail(20).min()
+        atr = atr14_from_log(inst_log)
 
-        s = donchian_state.get(inst, {"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+        s = donchian_state.get(inst, {"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None,
+                                       "risk_fraction": 1.0, "stop_price": None, "best_price": None})
         prev_pos = s["state"]
+
+        # === Breakeven-activated trailing stop check FIRST, using the
+        # level set BEFORE today (from yesterday's ATR and best-price-so-
+        # far) - never a level computed from today's own high/low. This
+        # is a genuinely validated, real alternative to Donchian's
+        # original exit-only-on-channel-reversal design: it activates
+        # once a trade shows 1xATR profit (moving the stop to breakeven),
+        # and trails at 1.5xATR behind the peak once profit reaches
+        # 2xATR - trading roughly 14% of Sharpe for roughly 14% less
+        # drawdown, per the validated backtest. Same causally-correct
+        # sequencing already used for Connors RSI.
+        stopped_out = False
+        if prev_pos == 1 and s.get("stop_price") is not None:
+            if low <= s["stop_price"]:
+                stopped_out = True
+                if s.get("trade_id"):
+                    execute_exit(s["trade_id"])
+                pnl, new_equity = record_trade_close(inst, "Donchian(20)", "long", s["entry_price"], s["risk_ref"], s["stop_price"], s.get("risk_fraction", 1.0))
+                msgs.append(f"*{inst}* — STOPPED OUT of LONG @ {s['stop_price']:.5f} (breakeven-trail). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
+        elif prev_pos == -1 and s.get("stop_price") is not None:
+            if high >= s["stop_price"]:
+                stopped_out = True
+                if s.get("trade_id"):
+                    execute_exit(s["trade_id"])
+                pnl, new_equity = record_trade_close(inst, "Donchian(20)", "short", s["entry_price"], s["risk_ref"], s["stop_price"], s.get("risk_fraction", 1.0))
+                msgs.append(f"*{inst}* — STOPPED OUT of SHORT @ {s['stop_price']:.5f} (breakeven-trail). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
+
+        if stopped_out:
+            donchian_state[inst] = s
+            continue
+
+        prev_pos = s["state"]  # re-read in case it changed above (it didn't, but keep this explicit)
 
         # trend_filter variant needs a 100-day MA gate on entries
         ma_ok_long = ma_ok_short = True
@@ -410,18 +602,18 @@ def process_donchian_all(state, msgs, open_counter):
                 if s.get("trade_id"):
                     execute_exit(s["trade_id"])
                 pnl, new_equity = record_trade_close(inst, "Donchian(20)", "long", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
-                msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f}. P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+                msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f} (channel reversal). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
             risk_frac = available_risk_fraction("Donchian(20)", open_counter[0])
             if risk_frac <= 0:
                 msgs.append(f"{inst}: SHORT signal fired but SKIPPED — 10% total risk budget already full.")
-                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
             else:
-                atr = atr14_from_log(inst_log)
                 risk_ref = close + atr if not np.isnan(atr) else close * 1.01
                 risk_gbp = current_risk_gbp("Donchian(20)", risk_frac)
                 fill = execute_entry(inst, "short", risk_gbp, risk_ref)
                 trade_id = fill["trade_id"] if fill else None
-                s.update({"state": -1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                s.update({"state": -1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac,
+                          "stop_price": None, "best_price": close})
                 open_counter[0] += get_risk_pct("Donchian(20)")
                 exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
                 frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
@@ -431,32 +623,51 @@ def process_donchian_all(state, msgs, open_counter):
             if s.get("trade_id"):
                 execute_exit(s["trade_id"])
             pnl, new_equity = record_trade_close(inst, "Donchian(20)", "long", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
-            msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f} (long-only, no short taken). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
-            s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+            msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f} (channel reversal, long-only). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+            s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
         elif close <= floor and can_long_entry:
             if prev_pos == -1:
                 if s.get("trade_id"):
                     execute_exit(s["trade_id"])
                 pnl, new_equity = record_trade_close(inst, "Donchian(20)", "short", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
-                msgs.append(f"*{inst}* — EXIT SHORT @ {close:.5f}. P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+                msgs.append(f"*{inst}* — EXIT SHORT @ {close:.5f} (channel reversal). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
             risk_frac = available_risk_fraction("Donchian(20)", open_counter[0])
             if risk_frac <= 0:
                 msgs.append(f"{inst}: LONG signal fired but SKIPPED — 10% total risk budget already full.")
-                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+                s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0, "stop_price": None, "best_price": None})
             else:
-                atr = atr14_from_log(inst_log)
                 risk_ref = close - atr if not np.isnan(atr) else close * 0.99
                 risk_gbp = current_risk_gbp("Donchian(20)", risk_frac)
                 fill = execute_entry(inst, "long", risk_gbp, risk_ref)
                 trade_id = fill["trade_id"] if fill else None
-                s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac,
+                          "stop_price": None, "best_price": close})
                 open_counter[0] += get_risk_pct("Donchian(20)")
                 exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
                 frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
                 msgs.append(f"*{inst}* ({variant}) — ENTER LONG @ {close:.5f} (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
         else:
+            # holding (or flat) with no channel-reversal exit - ratchet the
+            # breakeven-trail stop using TODAY's now-complete data, for
+            # TOMORROW's check only.
+            if s["state"] == 1 and not np.isnan(atr) and atr > 0:
+                s["best_price"] = max(s["best_price"], high) if s.get("best_price") else high
+                profit_r = (s["best_price"] - s["entry_price"]) / atr
+                if profit_r >= activate_r:
+                    new_stop = max(s["entry_price"], s["best_price"] - trail_mult*atr) if profit_r >= 2*activate_r else s["entry_price"]
+                    if s.get("stop_price") is None or new_stop > s["stop_price"]:
+                        s["stop_price"] = new_stop
+            elif s["state"] == -1 and not np.isnan(atr) and atr > 0:
+                s["best_price"] = min(s["best_price"], low) if s.get("best_price") else low
+                profit_r = (s["entry_price"] - s["best_price"]) / atr
+                if profit_r >= activate_r:
+                    new_stop = min(s["entry_price"], s["best_price"] + trail_mult*atr) if profit_r >= 2*activate_r else s["entry_price"]
+                    if s.get("stop_price") is None or new_stop < s["stop_price"]:
+                        s["stop_price"] = new_stop
+
             action = {1: "HOLD LONG", -1: "HOLD SHORT", 0: "FLAT"}[prev_pos]
-            msgs.append(f"{inst} ({variant}): {action} @ {close:.5f} (ceiling {ceiling:.5f}, floor {floor:.5f})")
+            stop_note = f", trail-stop {s['stop_price']:.5f}" if prev_pos != 0 and s.get("stop_price") else ""
+            msgs.append(f"{inst} ({variant}): {action} @ {close:.5f} (ceiling {ceiling:.5f}, floor {floor:.5f}){stop_note}")
 
         donchian_state[inst] = s
 
@@ -508,6 +719,8 @@ def main():
     state, nas100_log = process_nas100(state, msgs, open_counter)
     state, donchian_log = process_donchian_all(state, msgs, open_counter)
     state, connors_log = process_connors_all(state, msgs, open_counter)
+    state, rsi2_log = process_rsi2_all(state, msgs, open_counter)
+    state, monday_log = process_monday_effect_all(state, msgs, open_counter)
 
     nas100_log.to_csv(NAS100_LOG, index=False)
     # trim donchian log per-instrument to last 600 rows to keep file size sane
@@ -518,6 +731,12 @@ def main():
     trimmed_connors = [connors_log[connors_log["instrument"] == inst].sort_values("date").tail(400) for inst in CONNORS_INSTRUMENTS]
     connors_log = pd.concat(trimmed_connors, ignore_index=True)
     connors_log.to_csv(CONNORS_LOG, index=False)
+    trimmed_rsi2 = [rsi2_log[rsi2_log["instrument"] == inst].sort_values("date").tail(400) for inst in RSI2_INSTRUMENTS]
+    rsi2_log = pd.concat(trimmed_rsi2, ignore_index=True)
+    rsi2_log.to_csv(RSI2_LOG, index=False)
+    trimmed_monday = [monday_log[monday_log["instrument"] == inst].sort_values("date").tail(30) for inst in MONDAY_EFFECT_INSTRUMENTS]
+    monday_log = pd.concat(trimmed_monday, ignore_index=True)
+    monday_log.to_csv(MONDAY_LOG, index=False)
     DAILY_STATE_PATH.write_text(json.dumps(state, indent=2))
 
     equity = load_equity()
