@@ -59,6 +59,7 @@ JOURNAL_PATH = BASE / "journal.csv"
 DAILY_STATE_PATH = BASE / "daily_state.json"
 HOURLY_STATE_PATH = BASE / "hourly_state.json"
 QM_STATE_PATH = BASE / "qm_state.json"
+OVERNIGHT_STATE_PATH = BASE / "overnight_extension_state.json"
 
 STARTING_EQUITY = 1_000_000.0
 RISK_PCT = 0.01                        # default: 1% of current equity, per trade, before caps
@@ -117,6 +118,9 @@ def compute_committed_risk_pct():
         for inst_state in daily_state.get("connors", {}).values():
             if inst_state.get("state", 0) != 0:
                 committed += get_risk_pct("Connors RSI")
+        for inst_state in daily_state.get("monday_effect", {}).values():
+            if inst_state.get("state", 0) != 0:
+                committed += get_risk_pct("Monday Effect")
     if HOURLY_STATE_PATH.exists():
         hourly_state = json.loads(HOURLY_STATE_PATH.read_text())
         for inst_state in hourly_state.values():
@@ -127,6 +131,11 @@ def compute_committed_risk_pct():
         for inst_state in qm_state.values():
             if inst_state.get("order") is not None:
                 committed += get_risk_pct("QM+CISD+SBR")
+    if OVERNIGHT_STATE_PATH.exists():
+        overnight_state = json.loads(OVERNIGHT_STATE_PATH.read_text())
+        for inst_state in overnight_state.values():
+            if inst_state.get("state", 0) != 0:
+                committed += get_risk_pct("Overnight Extension")
     return committed
 
 

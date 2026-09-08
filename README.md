@@ -1,6 +1,6 @@
 # Portfolio Forward Test — £1,000,000, Per-Strategy Risk
 
-**Live now: NAS100 Pivot S/R, the 11-instrument Donchian(20) basket, and Connors RSI Composite (10 instruments).**
+**Live now: NAS100 Pivot S/R, the 11-instrument Donchian(20) basket, Connors RSI Composite (10 instruments), the Monday Effect (4 equity indices), and Overnight Extension (3 instruments, hourly cadence).**
 ADX+Supertrend and QM+CISD+SBR were removed after a full mechanical audit
 found real lookahead bugs in both — see "Removed strategies" below before
 ever re-enabling either.
@@ -9,7 +9,9 @@ ever re-enabling either.
 |---|---|---|---|---|
 | Pivot S/R (long-only, vol-scaled) | NAS100 | Daily | 0.5% | Sharpe 0.91 (full 2008-26 history, causal vol-scaling) |
 | Donchian(20) (7 variants) | 11 instruments | Daily | 1% | Sharpe 0.36-0.58 per instrument, unaffected by the audit |
-| Connors RSI Composite | 10 instruments | Daily | 0.5% | PF 1.02-1.14 per instrument, 100th-percentile randomization test, correlation 0.5-0.6 with the other two live strategies |
+| Connors RSI Composite | 10 instruments | Daily | 0.5% | PF 1.02-1.14 per instrument, 100th-percentile randomization test, correlation 0.5-0.6 with the other live strategies |
+| Monday Effect | NAS100, SPX500, US30, US2000 | Weekly (Fri entry, Mon exit) | 1% | PF 1.38-1.52 per instrument, 100th-percentile randomization test, low correlation (0.26-0.40) |
+| Overnight Extension | XAUUSD, NAS100, SPX500 | Hourly (22:00 UTC anchor) | 1% | PF 1.50 pooled, 100th-percentile randomization test, essentially zero correlation (-0.02 to 0.02) with every other live strategy |
 
 **This places no real trades. It's a forward-test journal.**
 

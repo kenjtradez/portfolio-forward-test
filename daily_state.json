@@ -1,24 +1,24 @@
 {
   "nas100": {
-    "state": 1,
-    "entry_price": 29544.150390625,
-    "risk_ref": 28940.34891183036,
-    "vol_scale": 0.4237467683419745,
+    "state": 0,
+    "entry_price": null,
+    "risk_ref": null,
+    "vol_scale": 1.0,
     "trade_id": null,
     "risk_fraction": 1.0
   },
   "donchian": {
     "EURGBP": {
-      "state": -1,
-      "entry_price": 0.858959972858429,
-      "risk_ref": 0.8607663994884491,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
     "EURCAD": {
-      "state": 1,
-      "entry_price": 1.6049799919128418,
-      "risk_ref": 1.600722133554731,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -37,9 +37,9 @@
       "risk_fraction": 1.0
     },
     "EURJPY": {
-      "state": 1,
-      "entry_price": 178.58799743652344,
-      "risk_ref": 177.38914009312222,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -51,9 +51,9 @@
       "risk_fraction": 1.0
     },
     "GBPCAD": {
-      "state": 1,
-      "entry_price": 1.869629979133606,
-      "risk_ref": 1.864293545311519,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -97,13 +97,13 @@
       "best_price": null
     },
     "CHFJPY": {
-      "state": 1,
-      "entry_price": 189.8679962158203,
-      "risk_ref": 188.328138671875,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 186.78828112792968,
-      "best_price": 189.8679962158203
+      "stop_price": null,
+      "best_price": null
     },
     "US30": {
       "state": 0,
@@ -133,31 +133,31 @@
       "best_price": null
     },
     "DE30": {
-      "state": 1,
-      "entry_price": 25953.9296875,
-      "risk_ref": 25733.899720982143,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 25738.12689732143,
-      "best_price": 26167.9296875
+      "stop_price": null,
+      "best_price": null
     },
     "USDJPY": {
-      "state": 1,
-      "entry_price": 153.61099243164062,
-      "risk_ref": 152.4181358380999,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 151.22527924455915,
-      "best_price": 153.61099243164062
+      "stop_price": null,
+      "best_price": null
     },
     "EURJPY": {
-      "state": 1,
-      "entry_price": 179.82899475097656,
-      "risk_ref": 178.68556626674106,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 177.5421377825056,
-      "best_price": 179.82899475097656
+      "stop_price": null,
+      "best_price": null
     },
     "US2000": {
       "state": 0,
@@ -176,6 +176,36 @@
       "risk_fraction": 1.0,
       "stop_price": null,
       "best_price": null
+    }
+  },
+  "monday_effect": {
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US30": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US2000": {
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
     }
   }
 }

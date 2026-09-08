@@ -27,6 +27,24 @@ NAS100_LOG = BASE / "nas100_log.csv"
 DONCHIAN_LOG = BASE / "donchian_log.csv"
 DAILY_STATE_PATH = BASE / "daily_state.json"
 
+MONDAY_LOG = BASE / "monday_effect_log.csv"
+
+MONDAY_EFFECT_INSTRUMENTS = {
+    'NAS100_USD': '^NDX', 'SPX500': '^GSPC', 'US30': '^DJI', 'US2000': '^RUT',
+}
+# Selected from the 34-instrument sweep: these 4 (all equity indices) showed
+# PF 1.38-1.52 for the Monday effect, the strongest and cleanest of any
+# instrument tested - see the book-strategy deep-dive audit. Randomization
+# test 100th percentile, both IS (0.801) and OOS (2.040) Sharpe positive,
+# cost-stress robust (PF 1.453->1.060 even at 5x cost), and importantly LOW
+# correlation (0.26-0.40) with NAS100 Pivot/Donchian/Connors RSI - genuinely
+# distinct, not redundant. Runs at standard 1% risk given its cost-stress
+# margin, unlike the thinner-margin strategies at 0.5%.
+# Mechanic: enter LONG at Friday's close, hold over the weekend, exit at
+# the following Monday's close - matching exactly what was backtested
+# (which measured Monday's close-to-close return, i.e. Friday-close to
+# Monday-close).
+
 CONNORS_LOG = BASE / "connors_log.csv"
 
 CONNORS_INSTRUMENTS = {
@@ -221,6 +239,61 @@ def compute_connors_rsi(inst_log, rsi_n=3, streak_n=2, rank_n=100):
     if np.isnan(price_rsi) or np.isnan(streak_rsi):
         return True, None
     return True, (price_rsi + streak_rsi + rank_pct) / 3
+
+
+def process_monday_effect_all(state, msgs, open_counter):
+    log = load_price_log(MONDAY_LOG)
+    monday_state = state.get("monday_effect", {})
+
+    for inst, yahoo_symbol in MONDAY_EFFECT_INSTRUMENTS.items():
+        bar = fetch_latest_daily_bar(yahoo_symbol)
+        inst_log = log[log["instrument"] == inst]
+        bar_date = pd.to_datetime(bar["date"])
+
+        if bar_date in set(inst_log["date"]):
+            msgs.append(f"{inst}: already logged today.")
+            continue
+
+        close = bar["close"]
+        row = {"instrument": inst, "date": bar_date, "close": close}
+        log = pd.concat([log, pd.DataFrame([row])], ignore_index=True)
+
+        s = monday_state.get(inst, {"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+        weekday = bar_date.dayofweek  # Monday=0, ..., Friday=4
+
+        # === EXIT: if a position is open (entered last Friday) and today
+        # is Monday, close it at today's close - matching exactly what was
+        # backtested (Friday-close to Monday-close return).
+        if s["state"] == 1 and weekday == 0:
+            if s.get("trade_id"):
+                execute_exit(s["trade_id"])
+            pnl, new_equity = record_trade_close(inst, "Monday Effect", "long", s["entry_price"], s["risk_ref"], close, s.get("risk_fraction", 1.0))
+            msgs.append(f"*{inst}* — EXIT LONG @ {close:.5f} (Monday Effect). P&L: £{pnl:,.0f}. Equity: £{new_equity:,.0f}")
+            s.update({"state": 0, "entry_price": None, "risk_ref": None, "trade_id": None, "risk_fraction": 1.0})
+
+        # === ENTRY: only on Friday, only if currently flat.
+        elif s["state"] == 0 and weekday == 4:
+            risk_frac = available_risk_fraction("Monday Effect", open_counter[0])
+            if risk_frac <= 0:
+                msgs.append(f"{inst}: Friday entry signal but SKIPPED — 10% risk budget full.")
+            else:
+                risk_ref = close * 0.99  # 1% nominal stop-distance for position sizing purposes only; this strategy has no real stop, it exits Monday regardless
+                risk_gbp = current_risk_gbp("Monday Effect", risk_frac)
+                fill = execute_entry(inst, "long", risk_gbp, risk_ref)
+                trade_id = fill["trade_id"] if fill else None
+                s.update({"state": 1, "entry_price": close, "risk_ref": risk_ref, "trade_id": trade_id, "risk_fraction": risk_frac})
+                open_counter[0] += get_risk_pct("Monday Effect")
+                exec_note = f" [LIVE, trade {trade_id}]" if fill else (" [EXECUTION ENABLED but order failed]" if EXECUTION_ENABLED else "")
+                frac_note = f" [{risk_frac:.0%} of full slice]" if risk_frac < 1.0 else ""
+                msgs.append(f"*{inst}* — ENTER LONG @ {close:.5f} (Monday Effect, Friday hold-over-weekend) (~£{risk_gbp:,.0f} at risk){exec_note}{frac_note}")
+        else:
+            action = "HOLD (over weekend)" if s["state"] == 1 else "FLAT (not Friday)"
+            msgs.append(f"{inst} (Monday Effect): {action} @ {close:.5f}")
+
+        monday_state[inst] = s
+
+    state["monday_effect"] = monday_state
+    return state, log
 
 
 def process_connors_all(state, msgs, open_counter, low_th=15, high_th=85, stop_atr_mult=2.0):
@@ -508,6 +581,7 @@ def main():
     state, nas100_log = process_nas100(state, msgs, open_counter)
     state, donchian_log = process_donchian_all(state, msgs, open_counter)
     state, connors_log = process_connors_all(state, msgs, open_counter)
+    state, monday_log = process_monday_effect_all(state, msgs, open_counter)
 
     nas100_log.to_csv(NAS100_LOG, index=False)
     # trim donchian log per-instrument to last 600 rows to keep file size sane
@@ -518,6 +592,9 @@ def main():
     trimmed_connors = [connors_log[connors_log["instrument"] == inst].sort_values("date").tail(400) for inst in CONNORS_INSTRUMENTS]
     connors_log = pd.concat(trimmed_connors, ignore_index=True)
     connors_log.to_csv(CONNORS_LOG, index=False)
+    trimmed_monday = [monday_log[monday_log["instrument"] == inst].sort_values("date").tail(30) for inst in MONDAY_EFFECT_INSTRUMENTS]
+    monday_log = pd.concat(trimmed_monday, ignore_index=True)
+    monday_log.to_csv(MONDAY_LOG, index=False)
     DAILY_STATE_PATH.write_text(json.dumps(state, indent=2))
 
     equity = load_equity()
