@@ -1,0 +1,31 @@
+name: Overnight Extension Signals (XAUUSD, NAS100, SPX500)
+
+on:
+  schedule:
+    - cron: '5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  run-signals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pandas requests
+
+      - name: Run overnight extension signals
+        run: python overnight_extension_signals.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add overnight_extension_log.csv overnight_extension_state.json equity.json journal.csv
+          git diff --staged --quiet || git commit -m "Update overnight extension state"
+          git push
