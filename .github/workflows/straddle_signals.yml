@@ -1,0 +1,34 @@
+name: Straddle Signals (EURGBP, AUDCAD, EURCAD, EURNZD)
+
+on:
+  schedule:
+    - cron: '35 22 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run-signals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pandas requests
+
+      - name: Run straddle signals
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python straddle_signals.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add straddle_log.csv straddle_state.json
+          git diff --staged --quiet || git commit -m "Update straddle signal state"
+          git push
