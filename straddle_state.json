@@ -1,14 +1,14 @@
 {
   "EURGBP": {
-    "last_signal_day_idx": null
+    "last_signal_day_idx": 0
   },
   "AUDCAD": {
-    "last_signal_day_idx": null
+    "last_signal_day_idx": 0
   },
   "EURCAD": {
-    "last_signal_day_idx": null
+    "last_signal_day_idx": 0
   },
   "EURNZD": {
-    "last_signal_day_idx": null
+    "last_signal_day_idx": 0
   }
 }
