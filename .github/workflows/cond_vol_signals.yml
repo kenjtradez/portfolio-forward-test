@@ -31,4 +31,8 @@ jobs:
           git config user.email "github-actions@github.com"
           git add cond_vol_log.csv cond_vol_state.json
           git diff --staged --quiet || git commit -m "Update conditional vol signal state"
-          git push
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
