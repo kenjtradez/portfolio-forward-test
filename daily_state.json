@@ -17,8 +17,8 @@
     },
     "EURCAD": {
       "state": 1,
-      "entry_price": 1.6026400327682495,
-      "risk_ref": 1.5978528882735117,
+      "entry_price": 1.6019999980926514,
+      "risk_ref": 1.5974692867006575,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -38,8 +38,8 @@
     },
     "EURJPY": {
       "state": 1,
-      "entry_price": 179.3459930419922,
-      "risk_ref": 178.1042783377511,
+      "entry_price": 178.2760009765625,
+      "risk_ref": 176.99650093296597,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -52,8 +52,8 @@
     },
     "GBPCAD": {
       "state": 1,
-      "entry_price": 1.866260051727295,
-      "risk_ref": 1.8604750548880442,
+      "entry_price": 1.8657900094985962,
+      "risk_ref": 1.8602457257652283,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -97,13 +97,13 @@
       "best_price": null
     },
     "CHFJPY": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 189.5240020751953,
+      "risk_ref": 187.90950289481026,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 186.2950037144252,
+      "best_price": 189.5240020751953
     },
     "US30": {
       "state": 0,
@@ -124,13 +124,13 @@
       "best_price": null
     },
     "XAUUSD": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 4388.89990234375,
+      "risk_ref": 4301.4538309151785,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 4214.007759486607,
+      "best_price": 4388.89990234375
     },
     "DE30": {
       "state": 0,
@@ -142,13 +142,13 @@
       "best_price": null
     },
     "USDJPY": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 153.28399658203125,
+      "risk_ref": 152.01785311453682,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 150.75170964704242,
+      "best_price": 153.28399658203125
     },
     "EURJPY": {
       "state": 1,
