@@ -64,8 +64,8 @@ def load_state():
 
 def send_telegram(msg):
     import os
-    token = os.environ.get("TG_TOKEN")
-    chat_id = os.environ.get("TG_CHAT_ID")
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
         print("[warn] Telegram not configured:\n" + msg)
         return

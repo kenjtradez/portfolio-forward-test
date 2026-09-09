@@ -33,8 +33,8 @@ BASE = Path(__file__).parent
 COND_VOL_LOG = BASE / "cond_vol_log.csv"
 COND_VOL_STATE_PATH = BASE / "cond_vol_state.json"
 
-TG_TOKEN = None  # set via environment / GitHub secret, same pattern as daily_signals.py
-TG_CHAT_ID = None
+TELEGRAM_BOT_TOKEN = None  # set via environment / GitHub secret, same pattern as daily_signals.py
+TELEGRAM_CHAT_ID = None
 
 COND_VOL_INSTRUMENTS = {
     'EURGBP': 'EURGBP=X', 'AUDCAD': 'AUDCAD=X', 'EURCAD': 'EURCAD=X',
@@ -87,8 +87,8 @@ def load_state():
 
 def send_telegram(msg):
     import os
-    token = os.environ.get("TG_TOKEN")
-    chat_id = os.environ.get("TG_CHAT_ID")
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
         print("[warn] Telegram not configured:\n" + msg)
         return
