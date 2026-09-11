@@ -44,9 +44,9 @@
       "risk_fraction": 1.0
     },
     "DE30": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 25528.0390625,
+      "risk_ref": 25297.367020089285,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -133,13 +133,13 @@
       "best_price": 4450.39990234375
     },
     "DE30": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 25528.0390625,
+      "risk_ref": 25297.367020089285,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": null,
-      "best_price": null
+      "stop_price": 25066.694977678573,
+      "best_price": 25528.0390625
     },
     "USDJPY": {
       "state": 1,
