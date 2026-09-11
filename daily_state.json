@@ -10,8 +10,8 @@
   "donchian": {
     "EURGBP": {
       "state": -1,
-      "entry_price": 0.8586900234222412,
-      "risk_ref": 0.8604357384640829,
+      "entry_price": 0.8594300150871277,
+      "risk_ref": 0.8610357310908181,
       "trade_id": null,
       "risk_fraction": 1.0
     },
@@ -31,10 +31,10 @@
     },
     "US30": {
       "state": 1,
-      "entry_price": 52380.66015625,
-      "risk_ref": 52030.893191964286,
+      "entry_price": 52064.1015625,
+      "risk_ref": 51707.40965401786,
       "trade_id": null,
-      "risk_fraction": 1.0
+      "risk_fraction": 0.9999999999999994
     },
     "EURJPY": {
       "state": 1,
@@ -102,8 +102,8 @@
       "risk_ref": 187.90950289481026,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 186.56085707310268,
-      "best_price": 189.65499877929688
+      "stop_price": 186.9715773751395,
+      "best_price": 190.0850067138672
     },
     "US30": {
       "state": 0,
@@ -147,8 +147,8 @@
       "risk_ref": 152.01785311453682,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 151.32271582031248,
-      "best_price": 153.6320037841797
+      "stop_price": 152.2031447230748,
+      "best_price": 154.61700439453125
     },
     "EURJPY": {
       "state": 1,
@@ -156,17 +156,17 @@
       "risk_ref": 178.1092832205636,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 176.9277111467634,
-      "best_price": 179.3509979248047
+      "stop_price": 176.98228248814175,
+      "best_price": 179.49099731445312
     },
     "US2000": {
-      "state": 1,
-      "entry_price": 2972.333740234375,
-      "risk_ref": 2942.4816337890625,
+      "state": 0,
+      "entry_price": null,
+      "risk_ref": null,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 2912.6295273437504,
-      "best_price": 2972.333740234375
+      "stop_price": null,
+      "best_price": null
     },
     "UK100": {
       "state": 0,
