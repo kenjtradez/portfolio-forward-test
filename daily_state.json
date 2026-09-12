@@ -1,9 +1,9 @@
 {
   "nas100": {
-    "state": 1,
-    "entry_price": 29559.732421875,
-    "risk_ref": 28955.89453125,
-    "vol_scale": 0.4219701604079984,
+    "state": 0,
+    "entry_price": null,
+    "risk_ref": null,
+    "vol_scale": 1.0,
     "trade_id": null,
     "risk_fraction": 1.0
   },
@@ -45,10 +45,10 @@
     },
     "DE30": {
       "state": 1,
-      "entry_price": 25528.0390625,
-      "risk_ref": 25297.367020089285,
+      "entry_price": 25361.150390625,
+      "risk_ref": 25135.446958705357,
       "trade_id": null,
-      "risk_fraction": 1.0
+      "risk_fraction": 0.9999999999999981
     },
     "GBPCAD": {
       "state": 1,
@@ -138,8 +138,8 @@
       "risk_ref": 25297.367020089285,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 25066.694977678573,
-      "best_price": 25528.0390625
+      "stop_price": 25160.682979910714,
+      "best_price": 25612.08984375
     },
     "USDJPY": {
       "state": 1,
