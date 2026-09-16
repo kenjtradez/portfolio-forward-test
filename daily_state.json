@@ -72,11 +72,11 @@
       "risk_fraction": 1.0
     },
     "NAS100_USD": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 28937.837890625,
+      "risk_ref": 28574.652036830357,
       "trade_id": null,
-      "risk_fraction": 1.0
+      "risk_fraction": 0.49999999999999767
     },
     "SPX500": {
       "state": 0,
@@ -129,7 +129,7 @@
       "risk_ref": 4301.4538309151785,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 4287.002759486607,
+      "stop_price": 4293.448473772321,
       "best_price": 4450.39990234375
     },
     "DE30": {
@@ -147,8 +147,8 @@
       "risk_ref": 152.01785311453682,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 152.37671346609932,
-      "best_price": 154.63400268554688
+      "stop_price": 153.11956330217635,
+      "best_price": 155.42799377441406
     },
     "EURJPY": {
       "state": 1,
