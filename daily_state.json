@@ -1,9 +1,9 @@
 {
   "nas100": {
-    "state": 0,
-    "entry_price": null,
-    "risk_ref": null,
-    "vol_scale": 1.0,
+    "state": 1,
+    "entry_price": 29446.98046875,
+    "risk_ref": 28877.7490234375,
+    "vol_scale": 0.46388733586079767,
     "trade_id": null,
     "risk_fraction": 1.0
   },
@@ -23,11 +23,11 @@
       "risk_fraction": 1.0
     },
     "GBPUSD": {
-      "state": 0,
-      "entry_price": null,
-      "risk_ref": null,
+      "state": 1,
+      "entry_price": 1.3360588550567627,
+      "risk_ref": 1.331167033555167,
       "trade_id": null,
-      "risk_fraction": 1.0
+      "risk_fraction": 0.9999999999999981
     },
     "US30": {
       "state": 0,
@@ -102,7 +102,7 @@
       "risk_ref": 187.90950289481026,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 187.01786281040737,
+      "stop_price": 187.03114915248327,
       "best_price": 190.0850067138672
     },
     "US30": {
@@ -129,7 +129,7 @@
       "risk_ref": 4301.4538309151785,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 4299.387731584821,
+      "stop_price": 4305.241989397322,
       "best_price": 4450.39990234375
     },
     "DE30": {
@@ -147,7 +147,7 @@
       "risk_ref": 152.01785311453682,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 153.9844215611049,
+      "stop_price": 154.01285096958705,
       "best_price": 156.3179931640625
     },
     "EURJPY": {
@@ -156,7 +156,7 @@
       "risk_ref": 178.1092832205636,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 177.03071154785155,
+      "stop_price": 177.04642977469308,
       "best_price": 179.49099731445312
     },
     "US2000": {
