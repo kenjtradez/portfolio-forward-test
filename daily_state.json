@@ -1,9 +1,9 @@
 {
   "nas100": {
-    "state": 1,
-    "entry_price": 29446.98046875,
-    "risk_ref": 28877.7490234375,
-    "vol_scale": 0.46388733586079767,
+    "state": 0,
+    "entry_price": null,
+    "risk_ref": null,
+    "vol_scale": 1.0,
     "trade_id": null,
     "risk_fraction": 1.0
   },
@@ -138,8 +138,8 @@
       "risk_ref": 25297.367020089285,
       "trade_id": null,
       "risk_fraction": 1.0,
-      "stop_price": 25205.956194196428,
-      "best_price": 25656.220703125
+      "stop_price": 25343.202008928572,
+      "best_price": 25800.619140625
     },
     "USDJPY": {
       "state": 1,
