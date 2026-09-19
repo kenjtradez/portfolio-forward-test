@@ -1,0 +1,46 @@
+{
+  "tgafollow": {
+    "NAS100_USD": {
+      "state": 0,
+      "entry_price": null,
+      "entry_date": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "SPX500": {
+      "state": 0,
+      "entry_price": null,
+      "entry_date": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US30": {
+      "state": 0,
+      "entry_price": null,
+      "entry_date": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "US2000": {
+      "state": 0,
+      "entry_price": null,
+      "entry_date": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "DE30": {
+      "state": 0,
+      "entry_price": null,
+      "entry_date": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    },
+    "UK100": {
+      "state": 0,
+      "entry_price": null,
+      "entry_date": null,
+      "trade_id": null,
+      "risk_fraction": 1.0
+    }
+  }
+}

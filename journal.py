@@ -56,18 +56,33 @@ HOURLY_STATE_PATH = BASE / "hourly_state.json"
 QM_STATE_PATH = BASE / "qm_state.json"
 OVERNIGHT_STATE_PATH = BASE / "overnight_extension_state.json"
 DIVERGENCE_STATE_PATH = BASE / "divergence_full_state.json"
+COT_STATE_PATH = BASE / "cot_full_state.json"
+VIXFADE_STATE_PATH = BASE / "vixfade_full_state.json"
+TGAFOLLOW_STATE_PATH = BASE / "tgafollow_full_state.json"
 
 STARTING_EQUITY = 1_000_000.0
 RISK_PCT = 0.01                        # default: 1% of current equity, per trade, before caps
 STRATEGY_RISK_PCT = {
-    "Pivot S/R": 0.005,                 # reduced after audit - see module docstring
-    "Connors RSI": 0.005,                # reduced given thin absolute margin (backtested PF 1.02-1.14),
-                                          # despite unusually strong cost-stress robustness - see daily_signals.py
-    "RSI(2) Mean Reversion": 0.005,       # reduced given a REAL confirmed tail risk - bootstrap worst-case
-                                          # drawdown -65.3% at standard 1% sizing (directional, non-hedged
-                                          # positions) - see daily_signals.py
-    "Divergence-Fade": 0.005,            # reduced given a smaller validated sample (~100 trades/instrument)
-                                          # than the longer-running strategies - see divergence_signals.py
+    # FUNDED configuration (2026-09-19, TGA-Follow added) - verified by
+    # binary search on the actual combined 9-strategy equity curve
+    # (compounding makes drawdown scale non-linearly with a uniform
+    # multiplier). Backtested FUNDED result: CAGR 6.67%, MaxDD exactly
+    # -6.00%, Sharpe 1.802 - genuinely improved from the 8-strategy
+    # version (5.29% CAGR), unlike VIX Shock-Fade which made the combined
+    # drawdown worse. TGA-Follow uses a 15-day hold specifically -
+    # tested against a 1-day version that showed a higher backtested
+    # Sharpe but real IS/OOS degradation on every instrument; the 1-day
+    # version is deployed separately as a signal-only alert
+    # (tga_daily_signal.py), never as an automated live strategy.
+    "Pivot S/R": 0.0009391,
+    "Donchian(20)": 0.0004749,
+    "Connors RSI": 0.0007945,
+    "Monday Effect": 0.0017532,
+    "RSI(2) Mean Reversion": 0.0022174,
+    "Overnight Extension": 0.0018568,
+    "Divergence-Fade": 0.0008927,
+    "COT Positioning Extreme": 0.0006606,
+    "TGA-Follow": 0.0007141,
 }
 MAX_TOTAL_OPEN_RISK_PCT = 0.10         # 10% combined risk cap across all simultaneously open positions
 MAX_RISK_MULTIPLE_OF_STARTING = 5      # position size never exceeds 5x what that strategy's risk % of STARTING capital would be
@@ -86,14 +101,48 @@ def get_risk_pct(strategy):
     return STRATEGY_RISK_PCT.get(strategy, RISK_PCT)
 
 
+MAX_ALLOWED_DRAWDOWN_PCT = 0.06        # hard funded-account limit - breach means the account is lost
+DRAWDOWN_WARNING_PCT = 0.04            # early warning threshold, well before the hard limit
+
+
 def load_equity():
     if EQUITY_PATH.exists():
         return json.loads(EQUITY_PATH.read_text())["equity"]
     return STARTING_EQUITY
 
 
+def load_peak_equity():
+    if EQUITY_PATH.exists():
+        data = json.loads(EQUITY_PATH.read_text())
+        return data.get("peak_equity", data.get("equity", STARTING_EQUITY))
+    return STARTING_EQUITY
+
+
 def save_equity(equity):
-    EQUITY_PATH.write_text(json.dumps({"equity": equity, "starting_equity": STARTING_EQUITY}, indent=2))
+    peak = max(load_peak_equity(), equity)
+    EQUITY_PATH.write_text(json.dumps({"equity": equity, "starting_equity": STARTING_EQUITY, "peak_equity": peak}, indent=2))
+
+
+def get_drawdown_status():
+    """Returns (current_drawdown_pct, distance_to_limit_pct, warning_level)
+    where warning_level is 'ok', 'warning', or 'BREACH'. Drawdown is
+    measured against PEAK equity (the standard, correct way for a
+    funded-account drawdown rule), not against starting capital -
+    dropping from a new high is what counts, not just being below where
+    you started."""
+    equity = load_equity()
+    peak = load_peak_equity()
+    if peak <= 0:
+        return 0.0, MAX_ALLOWED_DRAWDOWN_PCT, "ok"
+    current_dd = (peak - equity) / peak
+    distance_to_limit = MAX_ALLOWED_DRAWDOWN_PCT - current_dd
+    if current_dd >= MAX_ALLOWED_DRAWDOWN_PCT:
+        level = "BREACH"
+    elif current_dd >= DRAWDOWN_WARNING_PCT:
+        level = "warning"
+    else:
+        level = "ok"
+    return current_dd, distance_to_limit, level
 
 
 def ensure_journal_exists():
@@ -146,6 +195,23 @@ def compute_committed_risk_pct():
         for inst_state in divergence_state.values():
             if inst_state.get("state", 0) != 0:
                 committed += get_risk_pct("Divergence-Fade")
+    if COT_STATE_PATH.exists():
+        cot_full_state = json.loads(COT_STATE_PATH.read_text())
+        cot_state = cot_full_state.get("cot", {})
+        for inst_state in cot_state.values():
+            if inst_state.get("state", 0) != 0:
+                committed += get_risk_pct("COT Positioning Extreme")
+    if VIXFADE_STATE_PATH.exists():
+        vixfade_full_state = json.loads(VIXFADE_STATE_PATH.read_text())
+        vixfade_state = vixfade_full_state.get("vixfade", {})
+        if vixfade_state.get("state", 0) != 0:
+            committed += get_risk_pct("VIX Shock-Fade")
+    if TGAFOLLOW_STATE_PATH.exists():
+        tgafollow_full_state = json.loads(TGAFOLLOW_STATE_PATH.read_text())
+        tgafollow_state = tgafollow_full_state.get("tgafollow", {})
+        for inst_state in tgafollow_state.values():
+            if inst_state.get("state", 0) != 0:
+                committed += get_risk_pct("TGA-Follow")
     return committed
 
 
@@ -232,18 +298,27 @@ def record_trade_close(instrument, strategy, direction, entry_price, risk_refere
 
 def build_daily_pnl_summary():
     """Builds a plain-text daily P&L summary: current equity, total P&L
-    since inception, and today's closed trades specifically (from
-    journal.csv, filtered to today's UTC date). Designed to be sent as
-    its own Telegram message once a day, separate from each strategy's
-    own per-signal messages."""
+    since inception, drawdown status against the hard 6% funded-account
+    limit, and today's closed trades specifically (from journal.csv,
+    filtered to today's UTC date). Designed to be sent as its own
+    Telegram message once a day, separate from each strategy's own
+    per-signal messages."""
     equity = load_equity()
+    peak = load_peak_equity()
     total_pnl = equity - STARTING_EQUITY
     total_pnl_pct = (equity / STARTING_EQUITY - 1) * 100
+    current_dd, distance_to_limit, dd_level = get_drawdown_status()
+
+    dd_flag = {"ok": "", "warning": " ⚠️ WARNING", "BREACH": " 🚨 LIMIT BREACHED"}[dd_level]
 
     lines = [
         "DAILY P&L SUMMARY",
         f"Current equity: £{equity:,.2f}",
+        f"Peak equity: £{peak:,.2f}",
         f"Total P&L since inception: £{total_pnl:,.2f} ({total_pnl_pct:+.2f}%)",
+        "",
+        f"DRAWDOWN: {current_dd:.2%} of peak (limit: {MAX_ALLOWED_DRAWDOWN_PCT:.0%}){dd_flag}",
+        f"Room remaining before limit: {distance_to_limit:.2%}",
         "",
     ]
 
