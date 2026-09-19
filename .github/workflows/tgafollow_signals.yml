@@ -1,0 +1,35 @@
+name: TGA-Follow (NAS100, SPX500, US30, US2000, DE30, UK100)
+
+on:
+  schedule:
+    - cron: '40 22 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run-signals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pandas requests numpy
+
+      - name: Run TGA-Follow signals
+        run: python tgafollow_signals.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add tga_log.csv tgafollow_price_*.csv tgafollow_full_state.json equity.json journal.csv
+          git diff --staged --quiet || git commit -m "Update TGA-Follow state"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done
