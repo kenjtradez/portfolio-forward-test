@@ -1,12 +1,12 @@
 {
   "XAUUSD": {
-    "state": 0,
-    "entry_price": null,
+    "state": 1,
+    "entry_price": 4420.30029296875,
     "buy_level": 4420.30029296875,
     "sell_level": 4254.10009765625,
     "anchor_price": 4337.2001953125,
     "trade_id": null,
-    "risk_fraction": 1.0
+    "risk_fraction": 0.49999999999999767
   },
   "NAS100_USD": {
     "state": 0,
