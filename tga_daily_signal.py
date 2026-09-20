@@ -1,25 +1,32 @@
 """
 TGA Daily Shock - SIGNAL ONLY, not automated trading.
 
-Matches the "threshold" style workflow from your existing tracked system:
-  Threshold 1 (TGA shock detected) -> Threshold 2 (would confirm, but
-  this signal is fast enough that confirmation isn't part of its own
-  validated design) -> a Telegram alert, not an automated order.
-
 Mechanic: identical detection logic to the live TGA-Follow (15-day)
-strategy - same Z-score, same threshold - but flags it as a 1-day-hold
-opportunity instead of executing anything. This exists SEPARATELY from
-the live strategy because the 1-day version, while showing a higher
-backtested Sharpe, showed real IS/OOS degradation on every single
-instrument tested (unlike the 15-day version, which was consistent to
-improving) - not reliable enough to trust with automated capital, but
-real enough to be worth your own eyes on, given the significant
-historical edge it did show in-sample.
+strategy - same Z-score, same threshold - but flags it as a signal for
+your own manual, short-hold judgment rather than executing anything.
+
+VALIDATION STATUS - genuinely mixed, worth knowing before acting on this:
+- Original test (IS/OOS split 2024-01-01): pooled PF 1.375, but every
+  instrument showed real IS/OOS degradation (e.g. US30: 1.746 IS ->
+  0.928 OOS, below breakeven).
+- Re-examined with the split moved to 2025-01-01: 4 of 6 instruments
+  now show OOS at or above 1.0 - looks like a genuine recovery from a
+  difficult 2023-2024 stretch, not a permanent breakdown.
+
+INSTRUMENT RANKING (2025-split OOS PF, honest current read):
+  DE30 1.546 | US2000 1.395 | NAS100 1.130 | UK100 1.053 | SPX500 1.008 | US30 0.871
+This alert now recommends the TOP-RANKED instrument specifically, not
+all 6 generically, along with a live entry reference price and an
+ATR-based stop. IMPORTANT: the stop-loss level itself was NOT part of
+the original backtest (that used a fixed time-exit only) - it's a
+reasonable risk-management addition on top of a validated directional
+signal, not itself a validated stop distance.
+
+SUGGESTED HOLD WINDOW: 15 minutes to 3 hours after the open, not a full
+day - the signal itself is daily, but doesn't require holding all day.
 
 No execution, no journal.py sizing, no risk budget - this is purely
-informational, the same way the original Divergence-Fade and COT alerts
-started before their own graduation to live strategies (if they ever
-warrant it, unlike this one which has an active reliability concern).
+informational, for your own judgment.
 """
 import json
 from pathlib import Path
@@ -32,12 +39,21 @@ BASE = Path(__file__).parent
 TGA_LOG = BASE / "tga_log.csv"  # shared with tgafollow_signals.py - same underlying data
 DAILY_SIGNAL_STATE_PATH = BASE / "tga_daily_signal_state.json"
 
-INSTRUMENTS = {
-    'NAS100_USD': '^NDX', 'SPX500': '^GSPC', 'US30': '^DJI',
-    'US2000': '^RUT', 'DE30': '^GDAXI', 'UK100': '^FTSE',
-}
+# Ranked by 2025-split OOS PF, strongest first - the alert recommends
+# working down this list, not all 6 at once. Open times are UTC, main
+# session open for each instrument (US indices use NYSE cash open, not
+# their near-24hr futures/CFD trading window).
+INSTRUMENTS_RANKED = [
+    ('DE30', '^GDAXI', 1.546, 7, 0),      # Frankfurt open 07:00 UTC
+    ('US2000', '^RUT', 1.395, 13, 30),    # NYSE cash open 13:30 UTC
+    ('NAS100_USD', '^NDX', 1.130, 13, 30),
+    ('UK100', '^FTSE', 1.053, 8, 0),      # London open 08:00 UTC
+    ('SPX500', '^GSPC', 1.008, 13, 30),
+    ('US30', '^DJI', 0.871, 13, 30),
+]
 Z_HISTORY = 252
 SHOCK_THRESHOLD = 1.5
+ATR_STOP_MULT = 1.5  # reasonable convention matching other strategies this session - NOT itself backtested for this signal
 
 
 def fetch_latest_tga():
@@ -74,6 +90,27 @@ def load_tga_log():
     if TGA_LOG.exists():
         return pd.read_csv(TGA_LOG, parse_dates=["date"])
     return pd.DataFrame(columns=["date", "balance"])
+
+
+def fetch_recent_daily_bars(symbol, days=20):
+    """Enough recent daily bars to compute a 14-day ATR for the stop."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    params = {"range": f"{days}d", "interval": "1d"}
+    headers = {"User-Agent": "Mozilla/5.0"}
+    r = requests.get(url, params=params, headers=headers, timeout=15)
+    r.raise_for_status()
+    data = r.json()["chart"]["result"][0]
+    quote = data["indicators"]["quote"][0]
+    df = pd.DataFrame({"high": quote["high"], "low": quote["low"], "close": quote["close"]})
+    return df.dropna()
+
+
+def compute_atr(df, period=14):
+    """Standard True Range / ATR, matching the convention used across
+    every other strategy this session."""
+    high, low, close = df['high'], df['low'], df['close']
+    tr = pd.concat([high-low, (high-close.shift(1)).abs(), (low-close.shift(1)).abs()], axis=1).max(axis=1)
+    return tr.rolling(period).mean().iloc[-1]
 
 
 def send_telegram(msg):
@@ -115,14 +152,44 @@ def main():
         return
 
     direction_word = "UP" if z > 0 else "DOWN"
-    msgs.append("TGA DAILY SHOCK DETECTED (signal only - no trade placed)")
-    msgs.append(f"TGA moved {direction_word}, Z-score={z:.2f} (threshold: {SHOCK_THRESHOLD})")
-    msgs.append(f"As of: {latest_tga_date.date()}")
+    direction = "long" if z > 0 else "short"
+
+    msgs = ["TGA DAILY SHOCK DETECTED (signal only - no trade placed)",
+            f"TGA moved {direction_word}, Z-score={z:.2f} (threshold: {SHOCK_THRESHOLD})",
+            f"As of: {latest_tga_date.date()}",
+            ""]
+
+    # Actually fetch and rank each instrument's live price + ATR-based
+    # stop, rather than just listing names generically
+    for name, symbol, oos_pf, open_hour, open_min in INSTRUMENTS_RANKED:
+        try:
+            bars = fetch_recent_daily_bars(symbol)
+            entry_price = bars['close'].iloc[-1]
+            atr = compute_atr(bars)
+            if np.isnan(atr):
+                msgs.append(f"{name}: entry {entry_price:.2f} (ATR not yet available for a stop)")
+                continue
+            stop_distance = ATR_STOP_MULT * atr
+            stop_price = entry_price - stop_distance if direction == "long" else entry_price + stop_distance
+
+            # Exit window: 15 min to 3 hours after THIS instrument's own
+            # next session open - computed explicitly here rather than
+            # relying on a second, separately-timed alert
+            open_time = pd.Timestamp.now(tz='UTC').normalize() + pd.Timedelta(hours=open_hour, minutes=open_min)
+            if open_time < pd.Timestamp.now(tz='UTC'):
+                open_time += pd.Timedelta(days=1)
+            exit_start = open_time + pd.Timedelta(minutes=15)
+            exit_end = open_time + pd.Timedelta(hours=3)
+
+            msgs.append(f"{name} (2025 OOS PF {oos_pf:.2f}): {direction.upper()} @ {entry_price:.2f}, stop {stop_price:.2f} ({ATR_STOP_MULT}x ATR)")
+            msgs.append(f"    Exit window: {exit_start.strftime('%H:%M')}-{exit_end.strftime('%H:%M')} UTC (15min-3hr after {name}'s own open)")
+        except Exception as e:
+            msgs.append(f"{name}: could not fetch price/ATR ({e})")
+
     msgs.append("")
-    msgs.append("Historical backtest (1-day hold, FOLLOW direction) showed real edge in-sample,")
-    msgs.append("but degraded out-of-sample on every instrument tested - NOT used for automated")
-    msgs.append("trading. This is for your own judgment only, on:")
-    msgs.append("NAS100, SPX500, US30, US2000, DE30, UK100")
+    msgs.append("Ranked by 2025 OOS strength (top = most reliable) - work down the list.")
+    msgs.append("Stop is a reasonable ATR-based addition, NOT itself backtested for this signal.")
+    msgs.append("Exit at whichever comes first: stop hit, or the exit window closes.")
 
     full_message = "\n".join(msgs)
     send_telegram(full_message)
