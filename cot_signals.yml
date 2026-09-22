@@ -1,0 +1,35 @@
+name: COT Positioning Extreme (AUDUSD, GBPUSD, NZDUSD)
+
+on:
+  schedule:
+    - cron: '30 22 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run-signals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pandas requests numpy
+
+      - name: Run COT positioning signals
+        run: python cot_signals.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add cot_log.csv cot_price_AUDUSD.csv cot_price_GBPUSD.csv cot_price_NZDUSD.csv cot_full_state.json equity.json journal.csv
+          git diff --staged --quiet || git commit -m "Update COT positioning state"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done

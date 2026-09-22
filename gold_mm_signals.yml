@@ -1,0 +1,35 @@
+name: Gold MM Positioning (XAUUSD)
+
+on:
+  schedule:
+    - cron: '30 20 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run-signals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pandas requests numpy
+
+      - name: Run Gold MM Positioning signals
+        run: python gold_mm_signals.py
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add gold_mm_log.csv gold_mm_state.json equity.json journal.csv
+          git diff --staged --quiet || git commit -m "Update Gold MM Positioning state"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "Push attempt $i failed, retrying..."
+            sleep 5
+          done

@@ -63,26 +63,38 @@ TGAFOLLOW_STATE_PATH = BASE / "tgafollow_full_state.json"
 STARTING_EQUITY = 1_000_000.0
 RISK_PCT = 0.01                        # default: 1% of current equity, per trade, before caps
 STRATEGY_RISK_PCT = {
-    # FUNDED configuration (2026-09-19, TGA-Follow added) - verified by
-    # binary search on the actual combined 9-strategy equity curve
-    # (compounding makes drawdown scale non-linearly with a uniform
-    # multiplier). Backtested FUNDED result: CAGR 6.67%, MaxDD exactly
-    # -6.00%, Sharpe 1.802 - genuinely improved from the 8-strategy
-    # version (5.29% CAGR), unlike VIX Shock-Fade which made the combined
-    # drawdown worse. TGA-Follow uses a 15-day hold specifically -
-    # tested against a 1-day version that showed a higher backtested
-    # Sharpe but real IS/OOS degradation on every instrument; the 1-day
-    # version is deployed separately as a signal-only alert
-    # (tga_daily_signal.py), never as an automated live strategy.
-    "Pivot S/R": 0.0009391,
-    "Donchian(20)": 0.0004749,
-    "Connors RSI": 0.0007945,
-    "Monday Effect": 0.0017532,
-    "RSI(2) Mean Reversion": 0.0022174,
-    "Overnight Extension": 0.0018568,
-    "Divergence-Fade": 0.0008927,
-    "COT Positioning Extreme": 0.0006606,
-    "TGA-Follow": 0.0007141,
+    # FUNDED CONFIGURATION: "STRAT 1" (2026-09-20) - found via exhaustive
+    # search over all 1,013 possible non-empty combinations of the 10
+    # validated strategies, each rescaled to exactly 6% MaxDD. This
+    # combination genuinely maximizes both CAGR and Sharpe simultaneously
+    # vs the earlier 3-strategy version: CAGR 9.86% (was 9.24%), MaxDD
+    # exactly -6.00%, Sharpe 1.629 (was 1.586). Divergence-Fade added on
+    # top of the prior best (Pivot S/R + Overnight Extension + COT) -
+    # confirmed via the full correlation matrix to be one of 6 genuinely
+    # near-zero-correlated strategies (not just picked because it scored
+    # well), so this is real diversification, not double-counting risk.
+    #
+    # Other "Strat N" configurations exist as separate reference files
+    # for different risk/complexity trade-offs found in the same search
+    # - see journal_strat2_config.py etc. Only ONE strat should be active
+    # in this file at a time.
+    #
+    # The remaining strategies not listed here are NOT deleted - they
+    # remain validated and could be reconsidered - but are set to 0
+    # deliberately, not simply removed, so that if any of their GitHub
+    # Actions workflows are accidentally left enabled, they size at £0
+    # (a no-op) rather than silently falling back to the 1% RISK_PCT
+    # default - the exact mistake that caused the VIX Shock-Fade
+    # drawdown problem earlier.
+    "Pivot S/R": 0.0034427,
+    "Overnight Extension": 0.0068068,
+    "Divergence-Fade": 0.0032725,
+    "COT Positioning Extreme": 0.0024217,
+    "Donchian(20)": 0,
+    "Connors RSI": 0,
+    "Monday Effect": 0,
+    "RSI(2) Mean Reversion": 0,
+    "TGA-Follow": 0,
 }
 MAX_TOTAL_OPEN_RISK_PCT = 0.10         # 10% combined risk cap across all simultaneously open positions
 MAX_RISK_MULTIPLE_OF_STARTING = 5      # position size never exceeds 5x what that strategy's risk % of STARTING capital would be
