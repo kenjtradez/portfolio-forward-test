@@ -1,1 +1,2 @@
 date,instrument,strategy,direction,entry_price,exit_price,risk_fraction,pnl,equity
+2026-09-24T22:12:30.333429+00:00,XAUUSD,Overnight Extension,long,4420.300293,4254.100098,4310.899902,166.200195,-0.658,3403.4,-2240.27,1000000.0,997759.73,0.5
