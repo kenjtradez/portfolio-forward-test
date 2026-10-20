@@ -2,9 +2,9 @@
   "XAUUSD": {
     "state": 0,
     "entry_price": null,
-    "buy_level": null,
-    "sell_level": 4123.60009765625,
-    "anchor_price": 4198.2001953125,
+    "buy_level": 4200.0,
+    "sell_level": 4079.0,
+    "anchor_price": 4139.5,
     "trade_id": null,
     "risk_fraction": 1.0
   },
